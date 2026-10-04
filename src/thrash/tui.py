@@ -35,6 +35,8 @@ def monitor(kernel):
     for p in kernel.reg.all(include_terminated=True):
         ui.remember_project(p)
     rows, _, _ = kernel.table(include_terminated=True)
+    for row in rows:
+        row['core_saved'] = kernel.core_path(row['proc'].alias).is_file()
     return Monitor(rows, diagnose(kernel), kernel.tel.read(),
                    {r['proc'].alias: kernel.load_context(r['proc']) for r in rows}, kernel.clock())
 
@@ -44,7 +46,7 @@ def memory_text(view):
     for row in view.rows:
         p = row['proc']
         if p.state == State.TERMINATED:
-            location = 'CORE'
+            location = 'CORE' if row.get('core_saved') else 'RETIRED'
         elif p.state == State.SLEEPING:
             location = 'SWAP'
         else:

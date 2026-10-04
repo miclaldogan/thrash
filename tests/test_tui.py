@@ -104,3 +104,10 @@ async def test_confirmed_core_can_be_inspected(kernel3):
         await settled(app, pilot)
         assert app.screen.heading == 'CORE DUMP · alpha'
         assert 'Termination:' in app.screen.content.plain
+
+
+def test_no_core_is_not_drawn_as_core(kernel3):
+    kernel3.kill(kernel3.kill_plan('alpha'), core=False)
+    text = memory_text(monitor(kernel3)).plain
+    assert 'RETIRED' in text
+    assert 'CORE' not in text

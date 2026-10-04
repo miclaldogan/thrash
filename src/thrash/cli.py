@@ -50,6 +50,7 @@ def _version(v: bool):
 
 
 @app.callback()
+@guard
 def main(ctx: typer.Context, version: bool = typer.Option(False, "--version", callback=_version, is_eager=True)):
     if ctx.invoked_subcommand is None:
         if _interactive():
