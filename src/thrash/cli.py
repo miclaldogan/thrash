@@ -1,0 +1,283 @@
+"""`thrash` command line. Orchestration and rendering only; logic lives in scheduler.py."""
+
+from __future__ import annotations
+
+import functools
+import sys
+import time
+from pathlib import Path
+
+import typer
+
+from . import __version__, git_context as gc, ui
+from .config import Config, tilde
+from .ollama_client import ModelError
+from .registry import RegistryError, State, slugify
+from .scheduler import Kernel, KernelError, init_git_dir
+
+app = typer.Typer(
+    help="THRASH: a local human-process scheduler. It serializes and restores project context.",
+    no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False,
+)
+
+
+def get_kernel() -> Kernel:
+    return Kernel(Config.from_env())
+
+
+def guard(fn):
+    @functools.wraps(fn)
+    def wrapper(*a, **kw):
+        try:
+            return fn(*a, **kw)
+        except (RegistryError, KernelError) as exc:
+            ui.fail(str(exc))
+            raise typer.Exit(1)
+        except ModelError as exc:
+            ui.model_unavailable(str(exc))
+            raise typer.Exit(2)
+    return wrapper
+
+
+def _version(v: bool):
+    if v:
+        typer.echo(f"thrash {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(version: bool = typer.Option(False, "--version", callback=_version, is_eager=True)):
+    pass
+
+
+def _interactive() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _snapshot_note(snap) -> None:
+    if snap.image is not None and snap.error is None:
+        ui.console.print(ui.image_counts(snap.image))
+        if snap.reused:
+            ui.console.print("[dim]working set unchanged: image reused[/dim]")
+        else:
+            ui.console.print(f"[dim]extracted by {ui.e(snap.image.meta.model)} in {snap.seconds:.1f}s[/dim]")
+    elif snap.error:
+        ui.model_unavailable(snap.error, snap.error_kind)
+
+
+@app.command()
+@guard
+def init(
+    alias: str = typer.Option(None, "--alias", "-a", help="Public-safe name shown everywhere."),
+    path: Path = typer.Option(None, "--path", help="Project root (default: current directory)."),
+):
+    """Register the current project as a process and build its first process image."""
+    k = get_kernel()
+    start = (path or Path.cwd()).resolve()
+    root = gc.toplevel(start) or start
+    if not gc.is_git_repo(root):
+        ui.console.print("[yellow]no Git repository detected: continuing with a plain file scan.[/yellow]")
+    existing = k.reg.by_path(root)
+    ui.banner()
+    if existing:
+        ui.console.print(f"\nAlready registered as {existing.alias} (PID {existing.pid_str}). Re-scanning.\n")
+        proc = existing
+        with ui.working("Building working set..."):
+            snap = k.snapshot(proc, force=True)
+    else:
+        if alias is None:
+            default = slugify(root.name)
+            alias = typer.prompt("Public-safe alias (shown in all output)", default=default) if _interactive() else default
+        ui.console.print("\nRegistering process...\n")
+        proc = k.reg.register(slugify(alias) if alias != alias.lower() else alias, root, k.clock())
+        k.tel.record("init", k.clock(), project=proc.alias)
+        ui.console.print(f"PID       {proc.pid_str}\nNAME      {ui.e(proc.alias)}\nSTATE     {ui.state_cell(proc.state)}\n")
+        with ui.working("Building working set..."):
+            snap = k.snapshot(proc, force=True)
+        marker = root / ".thrash"
+        try:
+            marker.mkdir(exist_ok=True)
+            (marker / "project.json").write_text(f'{{"pid": {proc.pid}, "alias": "{proc.alias}"}}\n')
+            (marker / ".gitignore").write_text("*\n")
+        except OSError:
+            pass
+    _snapshot_note(snap)
+    ui.console.print("\nProcess registered.")
+
+
+@app.command()
+@guard
+def top(watch: bool = typer.Option(False, "--watch", "-w", help="Refresh every 2s (Ctrl-C to exit).")):
+    """Kernel monitor: process table, pressure and thrashing state."""
+    k = get_kernel()
+    if not watch:
+        rows, report, today = k.table()
+        ui.render_top(rows, report, today)
+        return
+    from rich.live import Live
+    from rich.console import Group
+    from rich.text import Text
+    try:
+        while True:
+            with ui.console.capture() as cap:
+                ui.render_top(*k.table())
+            ui.console.clear()
+            ui.console.print(Text.from_ansi(cap.get()))
+            time.sleep(2)
+    except KeyboardInterrupt:
+        pass
+
+
+@app.command()
+@guard
+def ps(all_: bool = typer.Option(False, "--all", "-a", help="Include TERMINATED.")):
+    """Plain process list for scripts and screenshots."""
+    k = get_kernel()
+    rows, _, _ = k.table(include_terminated=all_)
+    images = {}
+    for r in rows:
+        cf = k.load_context(r["proc"])
+        images[r["proc"].pid] = cf.image if cf else None
+    ui.render_ps(rows, images)
+
+
+@app.command()
+@guard
+def status(project: str = typer.Argument(None, help="Defaults to the RUNNING process.")):
+    """Detailed process image of the current (or named) process."""
+    k = get_kernel()
+    proc = k.reg.resolve(project, include_terminated=True) if project else k.current(Path.cwd())
+    if proc is None:
+        raise KernelError("no RUNNING process. use `thrash switch <project>` or name one.")
+    row = next((r for r in k.table(include_terminated=True)[0] if r["proc"].pid == proc.pid), None)
+    cf = k.load_context(proc)
+    ui.render_status(proc, cf.image if cf else None, row["state"] if row else proc.state)
+
+
+@app.command()
+@guard
+def switch(project: str = typer.Argument(..., help="Alias or PID.")):
+    """Save the RUNNING process, restore PROJECT, report drift."""
+    k = get_kernel()
+    dest = k.reg.resolve(project)
+    cur = k.reg.running()
+    ui.console.print("[bold]CONTEXT SWITCH[/bold]\n")
+    ui.console.print(f"FROM  {ui.e(cur.alias) if cur else '(idle)'}\nTO    {ui.e(dest.alias)}\n")
+    with ui.working("Saving working set..." if cur else "Restoring working set..."):
+        res = k.switch(project)
+    if res.out is not None:
+        _snapshot_note(res.out)
+        ui.console.print(f"\n{ui.swap_line(res.swap_path)}")
+    r = res.restore
+    ui.render_page_fault(res.dest, r.image, r.age_s, r.drift, r.scanned, r.error, r.error_kind)
+    if res.event.get("time_since_last_switch") is not None:
+        ui.console.print(f"\n[dim]{ui.fmt_age(res.event['time_since_last_switch'])} since previous switch · "
+                         f"restore {r.seconds:.2f}s[/dim]")
+
+
+@app.command()
+@guard
+def suspend(project: str = typer.Argument(...)):
+    """Snapshot PROJECT and move it to SLEEPING."""
+    k = get_kernel()
+    with ui.working("Serializing working set..."):
+        proc, snap, swap = k.suspend(project)
+    _snapshot_note(snap)
+    ui.console.print(f"\nProcess {proc.pid_str} suspended.\nWorking set paged to swap.\n{ui.swap_line(swap)}")
+
+
+@app.command()
+@guard
+def wake(project: str = typer.Argument(...)):
+    """Move a SLEEPING process to READY and restore its context (does not switch to it)."""
+    k = get_kernel()
+    proc = k.reg.resolve(project)
+    r = k.wake(project)
+    ui.render_page_fault(proc, r.image, r.age_s, r.drift, r.scanned, r.error, r.error_kind)
+    ui.console.print(f"\nProcess {proc.pid_str} is READY. Not switched.")
+
+
+@app.command()
+@guard
+def fork(
+    name: str = typer.Argument(..., help="Alias of the new process."),
+    path: Path = typer.Option(None, "--path", help="Project root (default: current Git root)."),
+    create: bool = typer.Option(False, "--create", help="Create ./NAME as a new Git repository."),
+    force: bool = typer.Option(False, "--force", "-f", help="Fork despite resource pressure."),
+    suspend_: str = typer.Option(None, "--suspend", "-s", help="Suspend this process first."),
+):
+    """Register a new process. Warns under pressure; never blocks."""
+    k = get_kernel()
+    n, ratio = k.pressure()
+    if n >= k.cfg.max_active and not force:
+        ui.console.print("[bold yellow]fork(): resource pressure detected[/bold yellow]\n")
+        ui.console.print(f"ACTIVE PROCESSES: {n}\nWORKING SET PRESSURE: {round(ratio * 100)}% ({'HIGH' if ratio >= 1 else 'ELEVATED'})\n")
+        ui.console.print("Creating another active process may increase\ncontext recovery cost.\n")
+        if suspend_:
+            k.suspend(suspend_)
+            ui.console.print(f"suspended {ui.e(suspend_)}.\n")
+        elif _interactive():
+            choice = typer.prompt("[S] suspend one  [F] fork anyway", default="F").strip().lower()
+            if choice.startswith("s"):
+                cand = next((p.alias for p in k.reg.all() if p.state == State.READY), None)
+                victim = typer.prompt("suspend which", default=cand or "")
+                k.suspend(victim)
+                ui.console.print(f"suspended {ui.e(victim)}.\n")
+        else:
+            ui.console.print("[dim]non-interactive: forking anyway (--suspend NAME or --force to silence).[/dim]\n")
+    if create:
+        root = (Path.cwd() / name).resolve()
+        init_git_dir(root)
+    else:
+        start = (path or Path.cwd()).resolve()
+        root = gc.toplevel(start) or start
+    if taken := k.reg.by_path(root):
+        raise KernelError(f"that directory is already process {taken.alias}. use --path or --create.")
+    proc = k.reg.register(name, root, k.clock())
+    k.tel.record("fork", k.clock(), project=proc.alias, active_before=n)
+    ui.console.print(f"fork() -> PID {proc.pid_str}  {ui.e(proc.alias)}  {ui.state_cell(proc.state)}")
+    with ui.working("Building working set..."):
+        snap = k.snapshot(proc, force=True)
+    _snapshot_note(snap)
+
+
+@app.command()
+@guard
+def kill(
+    project: str = typer.Argument(...),
+    core: bool = typer.Option(None, "--core/--no-core", help="Write a core dump (asks if omitted)."),
+    yes: bool = typer.Option(False, "--yes", "-y"),
+):
+    """Terminate a process in THRASH (the repository is never touched)."""
+    k = get_kernel()
+    ui.console.print(f"[bold red]SIGTERM[/bold red] -> {ui.e(project)}\n")
+    with ui.working("Recovering final process state..."):
+        plan = k.kill_plan(project)
+    if plan.snapshot.error:
+        ui.model_unavailable(plan.snapshot.error, plan.snapshot.error_kind)
+    ui.console.print(f"\nlast useful state:\n  {ui.e(plan.last_useful or 'unknown')}\n")
+    ui.console.print("unfinished:")
+    for u in plan.unfinished[:6] or ["(nothing recorded)"]:
+        ui.console.print(f"  {ui.e(u)}")
+    ui.console.print(f"\nreason inferred from repository:\n  {ui.e(plan.reason)}\n")
+    if core is None:
+        core = True if yes or not _interactive() else typer.confirm("Create core dump?", default=True)
+    path = k.kill(plan, core)
+    ui.console.print(f"core dumped:\n{tilde(path)}" if path else "process terminated. no core dump.")
+
+
+@app.command()
+@guard
+def resurrect(core: str = typer.Argument(..., help="Alias in the graveyard, or path to a .core file.")):
+    """Re-register a terminated process from its core dump."""
+    k = get_kernel()
+    proc, dump, drift, age = k.resurrect(core)
+    ui.console.print("Restoring terminated process...\n")
+    pc = dump.image.program_counter.task if dump.image else "unknown"
+    ui.console.print(f"last known PC:\n  {ui.e(pc)}\n\nage:\n  {ui.fmt_age(age)}\n\nrepository drift:\n  {drift.level}")
+    ui.render_drift(drift, "core dump")
+    ui.console.print(f"\nProcess {proc.pid_str} ({ui.e(proc.alias)}) is READY.")
+
+
+if __name__ == "__main__":
+    app()

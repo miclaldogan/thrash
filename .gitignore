@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.env
+# runtime data never belongs in the repo
+.thrash/
+demo/workspace/
+demo/.thrash-home/
+*.ctx
+*.core
