@@ -1,0 +1,49 @@
+REAL LOCAL GEMMA · SYNTHETIC REPOSITORY · 71-hour age simulated
+PAGE FAULT · game-alpha
+LAST KNOWN EXECUTION STATE
+game-alpha · confidence 0.80 (model-reported)
+
+WHAT YOU DID
+  Prototype camera follow completed. Rig validation is pending, specifically shoulder deformation
+during turns.
+
+WHAT YOU FINISHED
+  - Camera follow prototype runs (inferred)
+    evidence: notes.md
+
+WHAT YOU DECIDED AND WHY
+  - Validate rig before engine integration.
+    why: Avoid rebuilding an untested rig.
+    evidence: notes.md
+
+WHERE YOU LEFT OFF / PROGRAM COUNTER
+  shoulder validation
+
+REGISTERS
+  Not recorded.
+
+STACK RESTORED
+  1. Validate shoulder during turn
+
+RELEVANT FILES / OPEN HANDLES
+  README.md
+  notes.md
+
+WHAT CHANGED SINCE THEN
+  0 new commits · 1 changed files
+  file: notes.md
+  POSSIBLE DRIFT (LOW)
+
+WHAT REMAINS UNRESOLVED
+  Does the shoulder deform during a turn?
+
+BLOCKERS
+  Not recorded.
+
+EVIDENCE
+  notes.md
+
+NEXT EXECUTION
+NEXT INSTRUCTION:
+Validate the shoulder's deformation during a 45-degree turn.
+Check the drift above before executing a stale instruction.

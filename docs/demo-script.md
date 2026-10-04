@@ -1,75 +1,27 @@
-# Demo script (about 3 minutes)
+# Nine scenes: a human kernel
 
-Setup, once, off camera:
+Run `thrash demo`. Every frame is labeled SYNTHETIC. Press N for the next scene; close reports with Esc. Run `thrash demo --script` for a deterministic transcript. No model or real project is used by this scenario. Temporary state is removed on normal exit.
 
-```bash
-ollama pull gemma3:4b
-pip install -e .
-python demo/build_demo.py && source demo/env.sh      # synthetic workspace, isolated THRASH_HOME
-for p in game-alpha research-beta robot-lab paper-crane old-agent; do
-  thrash init --path demo/workspace/$p --alias $p >/dev/null
-done
-```
+1. **Clean kernel.** Three READY processes; NORMAL. Show the table and the saved next instruction. Tab opens the working memory map.
+2. **PAGE FAULT.** N switches to game-alpha after 71 simulated hours. Read completed work, the rig decision and its recorded reason, the stopping point, changed notes, unresolved turn test and the next instruction. This is the product demonstration; give it time.
+3. **IRQ.** Esc, N. “Try a procedural walk cycle” is queued while game-alpha remains RUNNING. Tab twice shows the queue. In a live demonstration, I captures another thought without switching.
+4. **Thrashing.** N records eight synthetic switches with short simulated sessions. The same deterministic scheduler that drives `top` now drives the warning and dispatch echoes.
+5. **Starvation.** N advances simulated time and dispatches other projects. Select paper-crane. Its waiting interval, competing dispatches and zero recorded execution explain the warning.
+6. **Zombie.** N adds film-study with twenty simulated idle days and unfinished residue. Select it to see the evidence. No emotional state is inferred.
+7. **OUT OF MIND.** N adds two synthetic processes, bringing active count to six. Explain the admission choices: suspend a READY process, queue the idea, or deliberately force admission. Nothing is killed automatically.
+8. **PANIC.** N creates a clearly synthetic high-switch history and IRQ backlog while multiple images are stale. All four gates are met. The recovery instructions and controls remain usable.
+9. **Recovery.** N suspends READY processes, acknowledges demo IRQs, and explicitly advances through a quiet window. NORMAL returns. Tab shows the saved working sets in SWAP. Q exits and removes the isolated scenario.
 
-`demo/run_demo.sh [--pause]` runs everything below in order.
+## Strongest 15 seconds
 
-## 0:00 The premise (say it, don't type it)
+Start on scene 1. N opens the 71-hour PAGE FAULT. Show “Camera follow prototype runs,” then the decision and **why**, then the stopped turn-pose test and NEXT INSTRUCTION. Esc, I, type a short thought, Enter: the idea is captured and the same project is still running.
 
-"A computer saves a process's state before switching. Humans don't. THRASH does."
+The useful return is the reveal. PANIC is the second shot, not the opening pitch.
 
-```bash
-thrash ps
-```
+## Screenshots
 
-## 0:20 A. Normal switch
+- Best product screenshot: the full PAGE FAULT report, especially completed work + decision reason + next instruction.
+- Best wide TUI screenshot: scene 8 with PANIC, paper-crane STARVED, film-study ZOMBIE, and the recovery choices.
+- Best recovery comparison: scene 9’s memory map after paging work to SWAP.
 
-```bash
-thrash switch research-beta
-thrash switch game-alpha
-```
-
-Point at: the working-set counts, `paged -> ...swap/research-beta.ctx`, then `PAGE FAULT`, PC, registers, `NEXT INSTRUCTION`.
-
-## 1:00 B. Page fault on a stale image
-
-```bash
-thrash switch robot-lab
-python demo/age_image.py game-alpha 71        # demo tooling: pretend 71 hours passed
-( cd demo/workspace/game-alpha && mkdir -p engine && echo "# scaffold" > engine/integration.gd \
-  && git add -A && git commit -qm "engine: start integration scaffold" )
-thrash switch game-alpha
-```
-
-Point at: `Process image is 71 hours old`, `POSSIBLE DRIFT`, `ASSUMPTION MAY BE STALE` with its evidence. Say that it says *may*, with the evidence, not "contradiction".
-
-## 1:45 C. Thrashing
-
-```bash
-for i in 1 2 3 4; do for p in research-beta robot-lab paper-crane game-alpha; do thrash switch $p >/dev/null; done; done
-thrash top
-```
-
-Point at: `STATE: THRASHING`, the signals that fired, and that every number comes from the event log, not from the model.
-
-## 2:20 D. Zombie
-
-```bash
-thrash ps          # old-agent: ZOMBIE (41 days idle + unresolved work)
-```
-
-## 2:35 E. Kill, core dump, resurrect
-
-```bash
-python demo/age_image.py old-agent 1032
-thrash kill old-agent --core
-thrash resurrect old-agent
-```
-
-Point at: `last useful state`, `unfinished`, `core dumped`, then the drift report on resurrection.
-
-## Bonus: no network, no model
-
-```bash
-THRASH_OLLAMA_URL=http://127.0.0.1:1 thrash switch research-beta   # LOCAL MODEL UNAVAILABLE, switch still happens
-thrash top                                                          # still works
-```
+For **real inference**, `demo/run_demo.sh` uses Gemma on synthetic Git repos. That is a separate verification path; do not describe fixture-mode results as live model output. See `prompt2-verification.md` for the actual new-schema run.

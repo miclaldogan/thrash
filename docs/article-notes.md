@@ -38,7 +38,7 @@ See README "Limitations". In short: only sees what is in files and commits; thre
 
 ## Honest scope notes
 - Commits were not as granular as planned for the first feature: the kernel (registry, images, switching, thrashing, privacy, CLI) went in as one commit.
-- Not built: shell integration, export formats, richer drift, animations.
+- At the end of Prompt 1, shell integration, export formats, richer drift and animations were not built. Prompt 2 adds the TUI and pressure/paging effects; the first three remain out of scope.
 
 ## Foundation audit follow-up
 - Added synthetic regressions for secrets in TODOs/commit subjects, ignored-file symlinks, linked ignore files, excluded roots, tracked/nested `.gitignore` rules, and public path masking.
@@ -51,3 +51,36 @@ See README "Limitations". In short: only sees what is in files and commits; thre
 
 ## Friend's feedback
 > **PLACEHOLDER: add real feedback here after she has tried it. Nothing in this repository claims a reaction.**
+
+## Prompt 2 story outline (notes, not a finished article)
+
+1. **The human bug.** Use the supplied mental-tabs story without inventing a conversation or medical explanation.
+2. **The task-manager joke.** More planners can become more things to remember. Keep it brief.
+3. **Recognition.** The repeated cost is reconstructing context. Explain OS thrashing, then make the limits of the analogy explicit.
+4. **The reveal.** “She didn’t need another planner. She needed a kernel.” Show the useful PAGE FAULT before showing any glitch effect.
+5. **Actual state.** Completed work, the reason behind a decision, the stopping point, changed files, unresolved work and one concrete next step. Point to evidence and honest blanks.
+6. **A thought interrupts.** Capture an IRQ while preserving the running process. It is not another project until explicitly admitted.
+7. **The screen tells the truth.** Visual echoes derive from recorded switching and pressure. Synthetic demonstration history stays labeled.
+8. **Starvation and residue.** A long READY wait is insufficient without other dispatches. A zombie needs inactivity plus unfinished residue. Neither is a judgment about the person.
+9. **Admission and recovery.** OUT OF MIND asks for a deliberate choice. PANIC has four gates and keeps recovery controls available. Suspending preserves context.
+10. **Local AI.** Gemma reconstructs semantic state; code owns times, counts, diffs and thresholds. No cloud inference.
+11. **What failed.** Include the real extraction and UI findings in `prompt2-verification.md`, alongside the earlier privacy fixes. Avoid claiming tests prove semantic truth.
+12. **Feedback.** Leave the existing placeholder until the friend actually uses it. Do not fabricate relief, quotes or results.
+13. **Ending candidate.** The project is not about making someone execute more tasks. It is about returning without rebuilding the whole room in their head.
+
+### Copy candidates supplied with the concept
+
+- “My laptop has a scheduler. My friend didn't.”
+- “1 human. 1 core. Too many processes.”
+- “The screen isn't glitching because I wanted a cool terminal aesthetic. It is glitching because she switched projects eleven times in four hours.” Use the latter only beside real telemetry showing eleven switches; the shipped synthetic panic scene has twenty-two.
+- “Context restoration.”
+
+### What to leave out
+
+No streak, focus score, deadline list, reward loop or automatic priority ranking. A feature that only renames a planner item with an OS noun does not belong. IRQs persist without dispatch, suspension preserves recoverable state, and core dumps restore a terminated process; those are observable behaviors.
+
+### Implementation research
+
+- László Szabó (`lezli01`), [The Terminal Should Show the Work, Not Own It](https://dev.to/lezli01/the-terminal-should-show-the-work-not-own-it-ihk), plus its durable-state discussion: keep CLI and TUI as clients of saved state. THRASH retains the existing local kernel rather than adding a daemon.
+- Nazarii Ahapevych, [Textual markup failure](https://dev.to/nazarii-ahapevych/typecname-crashed-my-textual-tui-why-escaping-user-text-isnt-enough-3gp0): dynamic content is rendered as literal Rich Text, with a bracket-shaped input regression test.
+- Official [Textual workers](https://textual.textualize.io/guide/workers/) and [testing](https://textual.textualize.io/guide/testing/) documentation informed worker messages and headless keyboard tests.

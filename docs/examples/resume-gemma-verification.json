@@ -1,0 +1,13 @@
+{
+  "interfaces": [
+    "lo"
+  ],
+  "model": "gemma3:4b",
+  "seconds": 84.33,
+  "completed": 1,
+  "decisions": 1,
+  "decision_reasons": 1,
+  "drift": "LOW",
+  "irq_route": "unclear",
+  "next_action": "Validate the shoulder's deformation during a 45-degree turn."
+}
