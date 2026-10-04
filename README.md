@@ -33,9 +33,9 @@ This mode uses **synthetic repositories, hand-authored images and simulated time
 
 For actual local-model extraction on synthetic Git repositories, use `demo/run_demo.sh` with Ollama running. See [the nine-scene demo script](docs/demo-script.md), [verification](docs/prompt2-verification.md), and [the original network-isolated run](docs/foundation-verification.md). Simulated ages are always labeled.
 
-![Synthetic kernel at PANIC, with explicit recovery choices](docs/examples/kernel-panic.svg)
+![Human kernel scope: dispatch trace, resident frames and swap horizon](docs/examples/scope/04-thrashing.svg)
 
-[Real local Gemma resume report](docs/examples/resume-gemma.txt) · [PAGE FAULT capture](docs/examples/resume-fixture.svg) · [Recovery memory map](docs/examples/kernel-memory.svg)
+[Visual identity / all nine states](docs/visual-identity.md) · [PAGE FAULT](docs/examples/scope/02-page-fault.svg) · [Sparse PANIC](docs/examples/scope/05-kernel-panic.svg) · [Actual Gemma report](docs/examples/resume-gemma.txt)
 
 ## Page faults: the point of the product
 
@@ -80,6 +80,18 @@ NEXT INSTRUCTION
 
 The report contains saved knowledge plus deterministic drift evidence. It does not quietly rewrite the next instruction when the repository changes. Review the drift or explicitly refresh.
 
+## A human kernel scope
+
+A fixed-time dispatch trace crosses the screen. Letters identify processes; densely spaced switches collide into `×` cells. IRQs and reconstructions puncture the trace. A dim scheduler scar preserves actual history from 48–24 hours ago; it is blank when no dispatches were recorded.
+
+Below it, each runnable process occupies one scheduler allocation unit, drawn as sixteen page frames. The budget follows `THRASH_MAX_ACTIVE`; overflow stays visible. Suspended processes cross the **swap horizon**. These are admission units, **not RAM** and not the separate WSS estimate.
+
+The current core exposes its PC, registers, stack and saved next instruction. The scheduler cursor uses `▶`, `⋯`, `†`, and `◇` rather than a colored selection bar. An amber IRQ rail and a restrained command rail complete the scope. The full keymap appears with `?`.
+
+PAGE FAULT replaces the scope with black: PC → registers → stack → YOU WERE HERE → YOU DECIDED → YOU STOPPED AT → WHILE YOU WERE GONE → NEXT EXECUTION. The sequence presents the existing canonical report; it does not simulate disk progress. Space reveals the report immediately, and Enter returns after FAULT RESOLVED. Missing context never claims resolution. Reduced motion skips the staged reveal.
+
+See the [visual specification and synthetic gallery](docs/visual-identity.md).
+
 ## Terminal controls
 
 Run `thrash` in a terminal for the full-screen kernel. In a pipe, no arguments print help instead of opening a UI.
@@ -91,13 +103,13 @@ Run `thrash` in a terminal for the full-screen kernel. In a pipe, no arguments p
 | I | Capture an IRQ without switching |
 | S / W | Suspend to swap / wake to READY |
 | K | Confirm termination with a meaningful core dump |
-| Tab | Cycle process table, memory map, interrupt queue |
+| Tab | Cycle kernel scope, page map, interrupt queue |
 | A | In the IRQ view, acknowledge the oldest pending interrupt |
-| M | Toggle reduced motion |
+| M / ? | Toggle reduced motion / open the keymap |
 | Esc / Q | Close a report / quit the kernel |
 | N | Advance a scene, in `thrash demo` only |
 
-Repository and model work runs outside the UI thread. Kernel operations are serialized within the TUI. Quit waits for an in-flight operation to finish; IRQ text entered during one is held visibly until it can be persisted. Use `THRASH_REDUCED_MOTION=1` for stable pressure indicators. Narrow terminals give the process table the full width; C opens the details.
+Repository and model work runs outside the UI thread. Kernel operations are serialized within the TUI. Quit waits for an in-flight operation to finish; IRQ text entered during one is held visibly until it can be persisted. Use `THRASH_REDUCED_MOTION=1` for stable pressure indicators. At 80×24, the scope compresses its trace and page map, shows the core PC, and keeps the scheduler cursor. C opens the full context. All views remain scrollable.
 
 ## Interrupts
 
@@ -144,7 +156,9 @@ The monitor maps the existing four-signal heuristic to NORMAL, PRESSURE and THRA
 
 PANIC is a recovery advisory, never an application crash: suspend READY work, review IRQs, or keep working deliberately. Recent switch history can keep THRASHING visible after suspension until the window expires; recovery does not erase telemetry.
 
-Pressure increases the warning borders and redraw traces. Thrashing adds echoes of actual dispatches; panic increases their displacement. A separate visual band labels these echoes so they cannot be mistaken for extra process rows or new events. The memory map shows estimated saved context units, and a short paging trace follows a successful suspend. Reduced motion removes displacement. Visual layers settle over three ticks after the underlying mode recovers.
+Each effect has a source: switch-rate pressure adds dispatch echoes; working-set pressure shifts the page frames; stale images leave labeled image traces; reconstruction pressure echoes actual restored processes; pending IRQs animate their rail. No effect invents a switch or a paging event. NORMAL is stable.
+
+PANIC removes the scope entirely, leaving centered real counts and three recovery controls: S suspends a chosen READY process, I opens pending IRQs, C continues deliberately. The initial red title fades to near-monochrome. After pressure falls, the scope redraws its trace, frames and core progressively. Reduced motion removes displacement and staged reveals. The existing heuristic and PANIC gates are unchanged.
 
 ## Processes
 
@@ -217,7 +231,7 @@ A scheduler heuristic, **not** neuroscience. Four transparent signals over a sli
 
 A switch needed *reconstruction* if the destination had no image, its image is older than `THRASH_STALE_HOURS` (24), or drift was MODERATE/HIGH.
 
-Metrics shown by `thrash top`: **LOAD** is the share of recorded run-time in the last 24 h (from your sessions). **CTX~** is an *estimate*: serialized image characters ÷ 4, rounded down (minimum 1), roughly token-like units. TUI **WSS≈** uses the same estimate; it is not bytes of RAM or a measurement of mental capacity. TUI FAULTS counts recorded switches that required reconstruction, not every opening of a report. **Pressure** is active ÷ limit, a definition, not a measurement of anything in your head.
+Metrics shown by `thrash top`: **LOAD** is the share of recorded run-time in the last 24 h (from your sessions). **CTX~** is an *estimate*: serialized image characters ÷ 4, rounded down (minimum 1), roughly token-like units. TUI **WSS≈** uses the same estimate; it is not bytes of RAM or a measurement of mental capacity. Trace ! punctures mark recorded reconstructions, not every opening of a report. **Pressure** is active ÷ limit, a definition, not a measurement of anything in your head.
 
 ## Installation
 
