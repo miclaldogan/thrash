@@ -69,11 +69,48 @@ def _snapshot_note(snap) -> None:
         ui.model_unavailable(snap.error, snap.error_kind)
 
 
+def admission(k, name, force=False, suspend=None, interrupt=False):
+    """Return False if the request was captured instead of admitted."""
+    from .diagnostics import diagnose
+    from .interrupts import InterruptQueue
+    d = diagnose(k)
+    if interrupt:
+        current = k.reg.running()
+        item = InterruptQueue(k.cfg).capture(ui.safe("Consider project " + name), k.clock(),
+                                            current.alias if current else None)
+        k.tel.record("irq", k.clock(), irq_id=item.id, project=item.current)
+        ui.console.print(f"Queued IRQ #{item.id}; no process created.")
+        return False
+    if suspend:
+        k.suspend(suspend)
+        d = diagnose(k)
+    if not d.out_of_mind or force:
+        return True
+    ui.console.print("[bold red]OUT OF MIND[/bold red] — admission needs a deliberate choice.")
+    ui.console.print(f"Active: {d.report.active} · pressure: {d.report.pressure:.0%} · "
+                     f"switches: {d.report.switches} · pending IRQs: {d.pending_irqs}")
+    ui.console.print("Suspension candidates: " + ui.e(", ".join(d.candidates) or "none"))
+    ui.console.print("Use --suspend ALIAS, --interrupt, or --force. Nothing is killed automatically.")
+    if _interactive():
+        choice = typer.prompt("[S] suspend / [I] interrupt / [F] force / [C] cancel", default="C").lower()
+        if choice == "f":
+            return True
+        if choice == "i":
+            return admission(k, name, interrupt=True)
+        if choice == "s":
+            victim = typer.prompt("Suspend alias")
+            return admission(k, name, suspend=victim)
+    raise typer.Exit(1)
+
+
 @app.command()
 @guard
 def init(
     alias: str = typer.Option(None, "--alias", "-a", help="Public-safe name shown everywhere."),
     path: Path = typer.Option(None, "--path", help="Project root (default: current directory)."),
+    force: bool = typer.Option(False, "--force"),
+    suspend_: str = typer.Option(None, "--suspend"),
+    interrupt: bool = typer.Option(False, "--interrupt"),
 ):
     """Register the current project as a process and build its first process image."""
     k = get_kernel()
@@ -96,6 +133,8 @@ def init(
         if alias is None:
             default = slugify(root.name)
             alias = typer.prompt("Public-safe alias (shown in all output)", default=default) if _interactive() else default
+        if not admission(k, alias, force, suspend_, interrupt):
+            return
         ui.console.print("\nRegistering process...\n")
         proc = k.reg.register(slugify(alias) if alias != alias.lower() else alias, root, k.clock())
         ui.remember_project(proc)
@@ -122,6 +161,19 @@ def top(watch: bool = typer.Option(False, "--watch", "-w", help="Refresh every 2
     if not watch:
         rows, report, today = k.table()
         ui.render_top(rows, report, today)
+        from .diagnostics import diagnose
+        d = diagnose(k)
+        ui.console.print(f"KERNEL MODE: {d.mode} · IRQ backlog: {d.pending_irqs}")
+        for alias, wait in d.starved.items():
+            if wait.starved:
+                ui.console.print(f"STARVATION: {ui.e(alias)} READY for {wait.waiting_hours:.0f}h; "
+                                 f"{wait.other_dispatches} other dispatches; {wait.execution_seconds:.0f}s execution.")
+        for row in rows:
+            if row["state"] == State.ZOMBIE:
+                ui.console.print(f"ZOMBIE: {ui.e(row['proc'].alias)} · {row['inactive_days']:.0f} days idle · "
+                                 f"{row['residue']} unresolved/blocker/TODO references in saved context.")
+        if d.mode == "PANIC":
+            ui.console.print("KERNEL PANIC: recovery advisory. Suspend a READY process, review interrupts, or continue deliberately.")
         return
     from rich.live import Live
     from rich.console import Group
@@ -219,18 +271,18 @@ def fork(
     create: bool = typer.Option(False, "--create", help="Create ./NAME as a new Git repository."),
     force: bool = typer.Option(False, "--force", "-f", help="Fork despite resource pressure."),
     suspend_: str = typer.Option(None, "--suspend", "-s", help="Suspend this process first."),
+    interrupt: bool = typer.Option(False, "--interrupt", help="Queue the idea instead of creating a process."),
 ):
-    """Register a new process. Warns under pressure; never blocks."""
+    """Register a process, with deliberate admission under extreme pressure."""
     k = get_kernel()
+    if not admission(k, name, force, suspend_, interrupt):
+        return
     n, ratio = k.pressure()
     if n >= k.cfg.max_active and not force:
         ui.console.print("[bold yellow]fork(): resource pressure detected[/bold yellow]\n")
         ui.console.print(f"ACTIVE PROCESSES: {n}\nWORKING SET PRESSURE: {round(ratio * 100)}% ({'HIGH' if ratio >= 1 else 'ELEVATED'})\n")
         ui.console.print("Creating another active process may increase\ncontext recovery cost.\n")
-        if suspend_:
-            k.suspend(suspend_)
-            ui.console.print(f"suspended {ui.e(suspend_)}.\n")
-        elif _interactive():
+        if _interactive():
             choice = typer.prompt("[S] suspend one  [F] fork anyway", default="F").strip().lower()
             if choice.startswith("s"):
                 cand = next((p.alias for p in k.reg.all() if p.state == State.READY), None)
@@ -320,6 +372,8 @@ def irq(text: str = typer.Argument(...),
     k = get_kernel()
     queue = InterruptQueue(k.cfg)
     current = k.reg.running()
+    if not text.strip():
+        raise KernelError("Interrupt text cannot be empty")
     item = queue.capture(ui.safe(text), k.clock(), current.alias if current else None)
     k.tel.record("irq", k.clock(), irq_id=item.id, project=item.current)
     ui.console.print(f"INTERRUPT REQUEST #{item.id} — queued. Current execution preserved.")
