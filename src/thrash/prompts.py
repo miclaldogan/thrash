@@ -22,7 +22,7 @@ Rules:
 
 FIELD_GUIDE = """Fill these fields:
 - program_counter.task: the single task the person was most likely in the middle of.
-- registers: short key/value map of important named state (e.g. "engine": "undecided").
+- registers: short key/value map of important named state found in the evidence (may be empty).
 - stack: ordered pending tasks, the immediate one first.
 - open_handles: the files that matter most right now (paths from FILE LIST).
 - decisions: active decisions, each with text, source (a path) and explicit.

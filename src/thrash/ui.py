@@ -37,7 +37,7 @@ def fmt_age(seconds: float | None) -> str:
         return f"{s} sec"
     if s < 5400:
         return f"{round(s / 60)} min"
-    if s < 172800:
+    if s < 4 * 86400:
         return f"{round(s / 3600)} hours"
     return f"{round(s / 86400)} days"
 
@@ -75,10 +75,15 @@ def model_unavailable(detail: str, kind: str | None = None) -> None:
 
 
 # --- image counters --------------------------------------------------------
+def _n(n: int, one: str, many: str | None = None) -> str:
+    return f"{n} {one if n == 1 else (many or one + 's')}"
+
+
 def image_counts(img: ProcessImage) -> str:
-    n_files = len(img.open_handles)
-    return (f"{len(img.decisions)} decisions\n{n_files} active files\n"
-            f"{len(img.unresolved)} unresolved questions\n{len(img.blockers)} blocker{'s' if len(img.blockers) != 1 else ''}")
+    return "\n".join([
+        _n(len(img.decisions), "decision"), _n(len(img.open_handles), "active file"),
+        _n(len(img.unresolved), "unresolved question"), _n(len(img.blockers), "blocker"),
+    ])
 
 
 # --- status ------------------------------------------------------------------
@@ -197,12 +202,12 @@ def render_top(rows: list[dict], report, switches_today: int) -> None:
     style = {"THRASHING": "bold red", "STRAINED": "yellow", "NOMINAL": "green"}[report.state]
     console.print(f"\nSTATE: [{style}]{report.state}[/]")
     if report.state == "THRASHING":
-        med = f"{round(report.median_session_s / 60)} min" if report.median_session_s is not None else "n/a"
+        med = fmt_age(report.median_session_s) if report.median_session_s is not None else "n/a"
         console.print(f"\n[bold red]THRASHING DETECTED[/bold red]\n")
-        console.print(f"{report.switches} project switches in {report.window_hours:g} hours")
+        console.print(f"{_n(report.switches, 'project switch', 'project switches')} in {report.window_hours:g} hours")
         console.print(f"median uninterrupted session: {med}")
-        console.print(f"{report.reconstructions} switches required stale-context reconstruction")
-        console.print(f"{report.active} active working sets")
+        console.print(f"{_n(report.reconstructions, 'switch', 'switches')} required stale-context reconstruction")
+        console.print(f"{_n(report.active, 'active working set')}")
         console.print(f"signals: {', '.join(report.fired)}")
         console.print("\nThe system is spending too much time restoring context.")
     elif report.state == "STRAINED":
