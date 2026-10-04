@@ -18,7 +18,7 @@ from .privacy import ScanPolicy, absolute
 
 app = typer.Typer(
     help="THRASH: a local human-process scheduler. It serializes and restores project context.",
-    no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False,
+    no_args_is_help=False, invoke_without_command=True, add_completion=False, pretty_exceptions_enable=False,
 )
 
 
@@ -50,8 +50,13 @@ def _version(v: bool):
 
 
 @app.callback()
-def main(version: bool = typer.Option(False, "--version", callback=_version, is_eager=True)):
-    pass
+def main(ctx: typer.Context, version: bool = typer.Option(False, "--version", callback=_version, is_eager=True)):
+    if ctx.invoked_subcommand is None:
+        if _interactive():
+            from .tui import KernelApp
+            KernelApp(get_kernel()).run()
+        else:
+            typer.echo(ctx.get_help())
 
 
 def _interactive() -> bool:
