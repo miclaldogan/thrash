@@ -17,6 +17,7 @@ from .diagnostics import diagnose
 from .interrupts import InterruptQueue
 from .registry import State
 from .resume import build_resume_report
+from .visuals import VisualPressure
 
 
 @dataclass
@@ -159,7 +160,8 @@ class KernelApp(App):
         self.busy = False
         self.view = None
         self.view_index = 0
-        self.phase = 0
+        self.visual = VisualPressure()
+        self.swap_effect = None
         self.quit_pending = False
         self.aliases = []
 
@@ -208,7 +210,7 @@ class KernelApp(App):
                       'rescan':'Rebuilding context with local Gemma…',
                       'suspend':'Serializing working set to swap…', 'wake':'Loading saved working set…',
                       'kill':'Recovering final state and writing core dump…', 'irq':'Queuing interrupt…',
-                      'ack':'Acknowledging interrupt…'}
+                      'ack':'Acknowledging interrupt…', 'demo':'Advancing explicitly synthetic scenario…'}
             self.notice(labels[action])
         self.perform(action, alias, text)
 
@@ -219,7 +221,9 @@ class KernelApp(App):
         try:
             k = self.kernel
             k.reg.load()
-            if action == 'switch':
+            if action == 'demo':
+                result, message = self.demo_controller.advance()
+            elif action == 'switch':
                 switched = k.switch(alias)
                 report = switched.restore
                 result = ('PAGE FAULT · ' + alias, self.restore_content(report))
@@ -316,6 +320,8 @@ class KernelApp(App):
         self.busy = False
         if message:
             self.notice(message)
+            if '→ SWAP' in message:
+                self.swap_effect = (selected, 4)
         if self.quit_pending:
             self.exit()
         elif result:
@@ -368,17 +374,30 @@ class KernelApp(App):
     def animate_pressure(self):
         if not self.view:
             return
-        self.phase += 1
         mode = self.view.diagnostics.mode
+        level = self.visual.tick(mode, self.reduced_motion)
+        offset = self.visual.offset(self.reduced_motion)
         history = [e.get('to_project', '') for e in self.view.events if e.get('type') == 'switch'][-4:]
-        if mode in ('THRASHING', 'PANIC') and history:
-            # Only actual recent dispatches; separate from the stable metrics/table.
-            offset = 0 if self.reduced_motion else self.phase % (4 if mode == 'PANIC' else 2)
-            line = 'DISPATCH ECHO (visual)  ' + '   '.join(history)
-            text = Text(' '*offset + ui.safe(line), style='red' if mode == 'PANIC' else 'yellow')
+        text = Text()
+        if level and history:
+            text.append(' '*offset + 'DISPATCH ECHO (visual)  ' + ui.safe('   '.join(history)),
+                        style=('red' if level == 3 else 'yellow' if level == 2 else 'dim'))
+            if level >= 2:
+                text.append('\n' + ' '*(3-offset) + 'STALE FRAME  ' + ui.safe(history[-1])
+                            + '   · context overhead is competing with execution', style='dim')
         else:
-            text = Text('Memory stable.' if mode == 'NORMAL' else 'Working-set pressure rising.', style='dim')
+            text.append('Memory stable.' if mode == 'NORMAL' else 'Working-set pressure rising.', style='dim')
+        if self.swap_effect:
+            alias, ticks = self.swap_effect
+            text = Text(ui.safe(f'PAGED {alias}  RESIDENT ' + '─'*(5-ticks) + '→ SWAP'), style='cyan')
+            self.swap_effect = (alias, ticks-1) if ticks > 1 and not self.reduced_motion else None
         self.query_one('#echo', Static).update(text)
+        if self.view_index == 1:
+            memory = memory_text(self.view)
+            if level:
+                memory.append('\nVISUAL REDRAW TRACE  ' + ' '*offset + '░▒' * level +
+                              '  (display effect; units above remain authoritative)', style='dim')
+            self.query_one('#alternate', Static).update(memory)
 
     def action_view(self):
         if isinstance(self.screen, ModalScreen):

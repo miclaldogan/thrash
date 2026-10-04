@@ -408,5 +408,15 @@ def interrupts(ack: int = typer.Option(None, "--ack", help="Acknowledge an IRQ b
         ui.console.print("No pending interrupts.")
 
 
+@app.command()
+def demo(script: bool = typer.Option(False, "--script", help="Print all nine synthetic scenes and exit.")):
+    """Isolated synthetic kernel: N advances scenes in the TUI; Q cleans up."""
+    from .demo import run_script, run_tui
+    if script or not _interactive():
+        run_script()
+    else:
+        run_tui()
+
+
 if __name__ == "__main__":
     app()
