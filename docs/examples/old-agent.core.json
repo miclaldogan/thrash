@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "alias": "old-agent",
+  "pid": 5,
+  "path": "~/projects/thrash/demo/workspace/old-agent",
+  "killed_at": 1791151259.9506216,
+  "reason": "no repository activity for 41 days",
+  "last_activity": 1787608831.0016081,
+  "image": {
+    "program_counter": {
+      "task": "implement writable calendar",
+      "confidence": 0.7
+    },
+    "registers": {},
+    "stack": [
+      "implement writable calendar"
+    ],
+    "open_handles": [
+      "agent/calendar.py",
+      "notes/status.md"
+    ],
+    "decisions": [],
+    "unresolved": [
+      "writable calendar permission scope"
+    ],
+    "blockers": [],
+    "next_action": "Start implementing writable calendar functionality.",
+    "last_useful_state": "Calendar READ-ONLY integration works.",
+    "evidence": [
+      "notes/status.md",
+      "agent/calendar.py"
+    ],
+    "project": "old-agent",
+    "meta": {
+      "created_at": 1787436047.1752875,
+      "model": "gemma3:4b",
+      "extract_seconds": 2.73,
+      "ctx_units": 165,
+      "todo_count": 3,
+      "dropped_paths": 0,
+      "redactions": 0,
+      "head": "ceb0ef4a9aadccd521bd2c1c87b8f9974136ec76"
+    }
+  },
+  "fingerprint": {
+    "head": "ceb0ef4a9aadccd521bd2c1c87b8f9974136ec76",
+    "branch": "main",
+    "taken_at": 1787436047.1752875,
+    "dirty": [],
+    "files": {
+      "README.md": 1787608831.5944312,
+      "agent/calendar.py": 1787608831.5944312,
+      "notes/status.md": 1787608831.5944312
+    }
+  }
+}

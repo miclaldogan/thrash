@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "alias": "robot-lab",
+  "saved_at": 1791151609.8106835,
+  "image": {
+    "program_counter": {
+      "task": "calibrate leg offsets",
+      "confidence": 0.9
+    },
+    "registers": {},
+    "stack": [
+      "calibrate leg offsets"
+    ],
+    "open_handles": [
+      "README.md",
+      "firmware/legs.ino",
+      "notes/calibration.md"
+    ],
+    "decisions": [
+      {
+        "text": "keep 50Hz PWM; do not switch to a driver board yet.",
+        "source": "notes/calibration.md",
+        "explicit": true
+      }
+    ],
+    "unresolved": [
+      "status of legs 5 and 6"
+    ],
+    "blockers": [],
+    "next_action": "Investigate drift in legs 5 and 6.",
+    "last_useful_state": "Leg 1-4 servo offsets done.",
+    "evidence": [
+      "notes/calibration.md",
+      "firmware/legs.ino",
+      "README.md"
+    ],
+    "project": "robot-lab",
+    "meta": {
+      "created_at": 1791151609.8106835,
+      "model": "gemma3:4b",
+      "extract_seconds": 10.28,
+      "ctx_units": 189,
+      "todo_count": 2,
+      "dropped_paths": 0,
+      "redactions": 0,
+      "head": "f755356909b2f3a99871096e4fbd3192de02e577"
+    }
+  },
+  "fingerprint": {
+    "head": "f755356909b2f3a99871096e4fbd3192de02e577",
+    "branch": "main",
+    "taken_at": 1791151609.8106835,
+    "dirty": [
+      "firmware/legs.ino"
+    ],
+    "files": {
+      "README.md": 1790373631.5944312,
+      "firmware/legs.ino": 1791151609.6203291,
+      "notes/calibration.md": 1790373631.5944312
+    }
+  }
+}
