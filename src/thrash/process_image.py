@@ -34,9 +34,22 @@ class Decision(BaseModel):
     text: str
     source: str = ""
     explicit: bool = True  # False = inferred by the model, not stated in the repo
+    reason: str = ""  # empty means the evidence did not record why
 
     @model_validator(mode="after")
     def require_source(self) -> "Decision":
+        if not self.source.strip():
+            self.explicit = False
+        return self
+
+
+class CompletedWork(BaseModel):
+    text: str
+    source: str = ""
+    explicit: bool = False
+
+    @model_validator(mode="after")
+    def require_source(self) -> "CompletedWork":
         if not self.source.strip():
             self.explicit = False
         return self
@@ -63,6 +76,23 @@ class ModelOutput(BaseModel):
     next_action: str = ""
     last_useful_state: str = ""
     evidence: list[str] = Field(default_factory=list)
+    summary: str = ""
+    completed: list[CompletedWork] = Field(default_factory=list)
+    purpose: str = ""
+    failures: list[str] = Field(default_factory=list)
+    resurrection_hint: str = ""
+
+    @field_validator("completed", mode="before")
+    @classmethod
+    def _completed(cls, v: Any) -> list[Any]:
+        if isinstance(v, str):
+            v = [v]
+        return [{"text": item, "explicit": False} if isinstance(item, str) else item for item in (v or [])]
+
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _summary(cls, v: Any) -> str:
+        return " ".join(str(x) for x in v) if isinstance(v, list) else (v or "")
 
     @field_validator("registers", mode="before")
     @classmethod
@@ -81,7 +111,7 @@ class ModelOutput(BaseModel):
             return {str(k): str(val) for k, val in v.items()}
         raise ValueError("registers must be an object")
 
-    @field_validator("stack", "open_handles", "unresolved", "blockers", "evidence", mode="before")
+    @field_validator("stack", "open_handles", "unresolved", "blockers", "evidence", "failures", mode="before")
     @classmethod
     def _lists(cls, v: Any) -> list[str]:
         return _strs(v)
@@ -111,6 +141,7 @@ class ImageMeta(BaseModel):
     dropped_paths: int = 0  # model-cited paths that do not exist (rejected)
     redactions: int = 0
     head: str | None = None
+    context_version: int = 1  # older saved images remain readable without migration
 
 
 class ProcessImage(ModelOutput):

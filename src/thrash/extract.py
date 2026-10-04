@@ -36,7 +36,7 @@ def sanitize(out: ModelOutput, allowed: set[str]) -> tuple[ModelOutput, int]:
 
     out.open_handles = [p.strip().removeprefix("./") for p in out.open_handles if ok(p)]
     out.evidence = [p.strip().removeprefix("./") for p in out.evidence if ok(p)]
-    for d in out.decisions:
+    for d in [*out.decisions, *out.completed]:
         d.source = d.source.strip().removeprefix("./")
         if not d.source or not ok(d.source):
             d.source = ""
@@ -74,6 +74,7 @@ def ollama_extractor(cfg: Config) -> Extractor:
                 dropped_paths=dropped,
                 redactions=ctx.redactions,
                 head=ctx.fingerprint.head,
+                context_version=2,
             ),
         )
         image.meta.ctx_units = estimate_units(image.model_dump_json())

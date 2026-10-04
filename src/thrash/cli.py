@@ -152,15 +152,20 @@ def ps(all_: bool = typer.Option(False, "--all", "-a", help="Include TERMINATED.
 
 @app.command()
 @guard
-def status(project: str = typer.Argument(None, help="Defaults to the RUNNING process.")):
+def status(project: str = typer.Argument(None, help="Defaults to the RUNNING process."),
+           refresh: bool = typer.Option(False, "--refresh", help="Rebuild semantic context with local Gemma.")):
     """Detailed process image of the current (or named) process."""
     k = get_kernel()
     proc = k.reg.resolve(project, include_terminated=True) if project else k.current(Path.cwd())
     if proc is None:
         raise KernelError("no RUNNING process. use `thrash switch <project>` or name one.")
     row = next((r for r in k.table(include_terminated=True)[0] if r["proc"].pid == proc.pid), None)
-    cf = k.load_context(proc)
-    ui.render_status(proc, cf.image if cf else None, row["state"] if row else proc.state)
+    if refresh:
+        with ui.working("Rebuilding working set..."):
+            snap = k.snapshot(proc, force=True)
+        _snapshot_note(snap)
+    restored = k.restore(proc, reconstruct=False)
+    ui.render_status(proc, restored.image, row["state"] if row else proc.state, restored.resume)
 
 
 @app.command()
@@ -178,7 +183,7 @@ def switch(project: str = typer.Argument(..., help="Alias or PID.")):
         _snapshot_note(res.out)
         ui.console.print(f"\n{ui.swap_line(res.swap_path)}")
     r = res.restore
-    ui.render_page_fault(res.dest, r.image, r.age_s, r.drift, r.scanned, r.error, r.error_kind)
+    ui.render_page_fault(res.dest, r.image, r.age_s, r.drift, r.scanned, r.error, r.error_kind, resume=r.resume)
     if res.event.get("time_since_last_switch") is not None:
         ui.console.print(f"\n[dim]{ui.fmt_age(res.event['time_since_last_switch'])} since previous switch · "
                          f"restore {r.seconds:.2f}s[/dim]")
@@ -202,7 +207,7 @@ def wake(project: str = typer.Argument(...)):
     k = get_kernel()
     proc = k.reg.resolve(project)
     r = k.wake(project)
-    ui.render_page_fault(proc, r.image, r.age_s, r.drift, r.scanned, r.error, r.error_kind)
+    ui.render_page_fault(proc, r.image, r.age_s, r.drift, r.scanned, r.error, r.error_kind, resume=r.resume)
     ui.console.print(f"\nProcess {proc.pid_str} is READY. Not switched.")
 
 
@@ -270,6 +275,15 @@ def kill(
         plan = k.kill_plan(project)
     if plan.snapshot.error:
         ui.model_unavailable(plan.snapshot.error, plan.snapshot.error_kind)
+    image = plan.snapshot.image
+    if image:
+        ui.console.print(f"PROCESS EXITING\n\nthings completed........ {len(image.completed)}\n"
+                         f"things unfinished....... {len(image.unresolved) + len(image.blockers)}\n")
+        ui.console.print(f"purpose: {ui.e(image.purpose or 'Not recorded.')}\n"
+                         f"last known intention: {ui.e(image.next_action or image.program_counter.task)}\n"
+                         f"resurrection worthwhile when: {ui.e(image.resurrection_hint or 'Not recorded.')}\n")
+        for failure in image.failures:
+            ui.console.print(f"failed approach: {ui.e(failure)}")
     ui.console.print(f"\nlast useful state:\n  {ui.e(plan.last_useful or 'unknown')}\n")
     ui.console.print("unfinished:")
     for u in plan.unfinished[:6] or ["(nothing recorded)"]:
@@ -292,6 +306,8 @@ def resurrect(core: str = typer.Argument(..., help="Alias in the graveyard, or p
     pc = dump.image.program_counter.task if dump.image else "unknown"
     ui.console.print(f"last known PC:\n  {ui.e(pc)}\n\nage:\n  {ui.fmt_age(age)}\n\nrepository drift:\n  {drift.level}")
     ui.render_drift(drift, "core dump")
+    from .resume import build_resume_report
+    ui.console.print(ui.resume_text(build_resume_report(proc.alias, dump.image, drift)))
     ui.console.print(f"\nProcess {proc.pid_str} ({ui.e(proc.alias)}) is READY.")
 
 

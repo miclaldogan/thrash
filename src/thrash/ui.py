@@ -9,12 +9,14 @@ import re
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
+from rich.text import Text
 
 from . import KERNEL_VERSION
 from .drift import DriftReport
 from .process_image import ProcessImage
 from .registry import Process, State
 from .privacy import public_text
+from .resume import ResumeReport, build_resume_report
 
 
 _project_names: dict[str, str] = {}
@@ -26,11 +28,15 @@ def remember_project(proc: Process) -> None:
         _project_names[name] = proc.alias
 
 
-def e(value: str) -> str:
+def safe(value: str) -> str:
     value = public_text(value)
     for name, alias in _project_names.items():
         value = re.sub(r"(?<![\w.-])" + re.escape(name) + r"(?![\w.-])", alias, value)
-    return escape(value)
+    return value
+
+
+def e(value: str) -> str:
+    return escape(safe(value))
 
 console = Console(highlight=False)
 err_console = Console(stderr=True, highlight=False)
@@ -108,75 +114,111 @@ def dotted(key: str, val: str, width: int = 24) -> str:
     return f"{e(key)} {'.' * max(2, width - len(key))} {e(val)}"
 
 
-def render_status(proc: Process, img: ProcessImage | None, state: State) -> None:
+def resume_text(report: ResumeReport) -> Text:
+    """One literal-text renderer shared by the CLI and TUI (never parse repository markup)."""
+    out = Text()
+
+    def heading(label: str) -> None:
+        out.append(label + "\n", style="bold cyan")
+
+    def line(value: str = "", style: str | None = None) -> None:
+        out.append(safe(value) + "\n", style=style)
+
+    def items(label: str, values: list[str]) -> None:
+        heading(label)
+        for value in values or ["Not recorded."]:
+            line("  " + value)
+        line()
+
+    if not report.available:
+        heading("CONTEXT UNAVAILABLE")
+        line("No saved process image. Start local Ollama and rescan this project with thrash init.")
+        return out
+    heading("LAST KNOWN EXECUTION STATE")
+    line(f"{report.project} · confidence {report.confidence:.2f} (model-reported)", "dim")
+    line()
+    items("WHAT YOU DID", [report.what_happened] if report.what_happened else [])
+    heading("WHAT YOU FINISHED")
+    if not report.completed:
+        line("  No completed work recorded; pending work is not assumed finished.")
+    for item in report.completed:
+        line(f"  - {item.text}" + (" (inferred)" if not item.explicit else ""))
+        if item.source:
+            line(f"    evidence: {item.source}", "dim")
+    line()
+    heading("WHAT YOU DECIDED AND WHY")
+    if not report.decisions:
+        line("  No decisions recorded.")
+    for decision in report.decisions:
+        line(f"  - {decision.text}" + (" (inferred)" if not decision.explicit else ""))
+        line(f"    why: {decision.reason or 'Reason not recorded.'}")
+        if decision.source:
+            line(f"    evidence: {decision.source}", "dim")
+    line()
+    items("WHERE YOU LEFT OFF / PROGRAM COUNTER", [report.last_execution_point] if report.last_execution_point else [])
+    items("REGISTERS", [f"R{i} = {key}: {value}" for i, (key, value) in enumerate(report.registers.items())])
+    items("STACK RESTORED", [f"{i}. {task}" for i, task in enumerate(report.stack, 1)])
+    items("RELEVANT FILES / OPEN HANDLES", report.relevant_files)
+    heading("WHAT CHANGED SINCE THEN")
+    changes = report.changes_since_snapshot
+    if changes.history_rewritten:
+        line("  Saved commit no longer available; history needs review.", "yellow")
+    line(f"  {changes.new_commits} new commits · {len(changes.files)} changed files")
+    for subject in changes.commit_subjects:
+        line(f"  commit: {subject}")
+    for path in changes.files:
+        line(f"  file: {path}")
+    if report.drift_level != "NONE":
+        line(f"  POSSIBLE DRIFT ({report.drift_level})", "yellow")
+    for stale in report.possible_drift:
+        line(f"  ASSUMPTION MAY BE STALE: {stale.saved}", "yellow")
+        for evidence in stale.evidence:
+            line(f"    evidence: {evidence}", "dim")
+    line()
+    items("WHAT REMAINS UNRESOLVED", report.unresolved)
+    items("BLOCKERS", report.blockers)
+    items("EVIDENCE", report.evidence)
+    heading("NEXT EXECUTION")
+    line("NEXT INSTRUCTION:", "dim")
+    line(report.next_action or "Review the saved evidence and record one immediate next step.", "bold")
+    if report.legacy_image:
+        line("Older image: completed work and reasons may be absent. Use status --refresh to enrich it.", "dim")
+    if report.drift_level != "NONE":
+        line("Check the drift above before executing a stale instruction.", "yellow")
+    return out
+
+
+def render_status(proc: Process, img: ProcessImage | None, state: State,
+                  resume: ResumeReport | None = None) -> None:
     remember_project(proc)
     console.print(f"[bold]PID {proc.pid_str}  {e(proc.alias)}  {state_cell(state)}[/bold]\n")
-    if img is None:
-        console.print("no process image. run [bold]thrash switch[/bold] / [bold]thrash init[/bold] with the local model up.")
-        return
-    conf = img.program_counter.confidence
-    console.print("[bold]PROGRAM COUNTER[/bold]")
-    console.print(f"{e(img.program_counter.task)}  [dim](model-reported confidence {conf:.2f})[/dim]\n")
-    if img.registers:
-        console.print("[bold]REGISTERS[/bold]")
-        for k, v in img.registers.items():
-            console.print(dotted(k, v))
-        console.print()
-    if img.stack:
-        console.print("[bold]STACK[/bold]")
-        for i, t in enumerate(img.stack, 1):
-            console.print(f"{i}. {e(t)}")
-        console.print()
-    if img.open_handles:
-        console.print("[bold]OPEN HANDLES[/bold]")
-        for h in img.open_handles:
-            console.print(e(h))
-        console.print()
-    if img.decisions:
-        console.print("[bold]DECISIONS[/bold]")
-        for d in img.decisions:
-            tag = "" if d.explicit else " [dim](inferred)[/dim]"
-            src = f"  [dim]<- {e(d.source)}[/dim]" if d.source else ""
-            console.print(f"- {e(d.text)}{tag}{src}")
-        console.print()
-    for title, items in (("UNRESOLVED", img.unresolved), ("BLOCKERS", img.blockers)):
-        if items:
-            console.print(f"[bold]{title}[/bold]")
-            for t in items:
-                console.print(f"- {e(t)}")
-            console.print()
-    console.print("[bold]NEXT ACTION[/bold]")
-    console.print(e(img.next_action or img.program_counter.task))
-    m = img.meta
-    console.print(f"\n[dim]image: model {e(m.model)} · ~{m.ctx_units}u (estimate) · "
-                  f"extract {m.extract_seconds}s · {m.dropped_paths} invalid path(s) rejected · "
-                  f"{m.redactions} redaction(s)[/dim]")
+    console.print(resume_text(resume or build_resume_report(proc.alias, img)))
+    if img:
+        m = img.meta
+        console.print(f"\n[dim]image: model {e(m.model)} · ~{m.ctx_units}u (estimate) · "
+                      f"extract {m.extract_seconds}s · {m.dropped_paths} invalid path(s) rejected · "
+                      f"{m.redactions} redaction(s)[/dim]")
 
 
-# --- page fault / restore ---------------------------------------------------
 def render_page_fault(proc: Process, img: ProcessImage | None, age_s: float | None, drift: DriftReport,
-                      scanned: bool, error: str | None, error_kind: str | None, since_word: str = "suspend") -> None:
+                      scanned: bool, error: str | None, error_kind: str | None, since_word: str = "suspend",
+                      resume: ResumeReport | None = None) -> None:
     remember_project(proc)
     console.print("\n[bold magenta]PAGE FAULT[/bold magenta]\n")
     console.print(f"Restoring process {proc.pid_str}...\n")
-    if img is None:
-        console.print("no saved image for this process.")
-        if error:
-            model_unavailable(error, error_kind)
-        return
-    conf = img.program_counter.confidence
-    console.print(f"PC  -> {e(img.program_counter.task)}  [dim](conf {conf:.2f})[/dim]")
-    for i, (k, v) in enumerate(list(img.registers.items())[:6]):
-        console.print(f"R{i}  -> {e(k)}: {e(v)}")
-    console.print("\n[bold]STACK RESTORED[/bold]" + (f"  [dim]({len(img.stack)} frames)[/dim]" if img.stack else ""))
-    if scanned:
-        console.print("\nno prior page: context reconstructed from repository.")
-        if error:
-            model_unavailable(error, error_kind)
-    else:
-        console.print(f"\nProcess image is {fmt_age(age_s)} old.")
-        render_drift(drift, since_word)
-    console.print(f"\n[bold]NEXT INSTRUCTION:[/bold]\n{e(img.next_action or img.program_counter.task)}")
+    if error:
+        model_unavailable(error, error_kind)
+    if img:
+        console.print(f"locating process image........ found\n"
+                      f"loading decisions............. {len(img.decisions)}\n"
+                      f"loading unresolved state...... {len(img.unresolved)}\n"
+                      f"loading working files......... {len(img.open_handles)}")
+        console.print("\nContext reconstructed from repository." if scanned else
+                      f"\nProcess image is {fmt_age(age_s)} old.")
+        console.print()
+    console.print(resume_text(resume or build_resume_report(proc.alias, img, drift)))
+    if img:
+        console.print("\n[bold green]FAULT RESOLVED[/bold green] · saved working set restored")
 
 
 def render_drift(drift: DriftReport, since_word: str = "suspend") -> None:

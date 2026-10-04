@@ -25,6 +25,7 @@ from .privacy import IgnoreRules, ScanPolicy
 from .process_image import ContextFile, Fingerprint, ImageError, ProcessImage
 from .registry import Process, Registry, RegistryError, State
 from .telemetry import Telemetry
+from .resume import ResumeReport, build_resume_report
 
 
 class KernelError(Exception):
@@ -132,6 +133,7 @@ class RestoreReport:
     error: str | None = None
     error_kind: str | None = None
     seconds: float = 0.0
+    resume: ResumeReport | None = None
 
 
 @dataclass
@@ -234,7 +236,7 @@ class Kernel:
         cf.write(self.swap_path(proc))
         return self.swap_path(proc)
 
-    def restore(self, proc: Process) -> RestoreReport:
+    def restore(self, proc: Process, reconstruct: bool = True) -> RestoreReport:
         t0 = time.monotonic()
         now = self.clock()
         if not ScanPolicy(self.cfg.excluded_roots).allows(Path(proc.path)):
@@ -243,19 +245,21 @@ class Kernel:
         # Resident wins ties (e.g. forced rescans with an unchanged test clock).
         cf = max((c for c in candidates if c is not None), key=lambda c: c.saved_at, default=None)
         scanned, err, kind = False, None, None
-        if cf is None:
+        if cf is None and reconstruct:
             snap = self.snapshot(proc, force=True)
             scanned, err, kind = True, snap.error, snap.error_kind
             cf = self.load_context(proc)
         if cf is None:
             return RestoreReport(proc, None, reconstructed=True, scanned=scanned, error=err,
-                                 error_kind=kind, seconds=time.monotonic() - t0)
+                                 error_kind=kind, seconds=time.monotonic() - t0,
+                                 resume=build_resume_report(proc.alias, None))
         age = max(0.0, now - cf.image.meta.created_at)
         drift = DriftReport()
         if Path(proc.path).is_dir() and not scanned:
             drift = compute_drift(Path(proc.path), cf.image, cf.fingerprint, self.rules(proc), now)
         recon = scanned or age >= self.cfg.stale_hours * 3600 or drift.level in ("MODERATE", "HIGH")
-        return RestoreReport(proc, cf.image, age, drift, recon, scanned, err, kind, time.monotonic() - t0)
+        return RestoreReport(proc, cf.image, age, drift, recon, scanned, err, kind, time.monotonic() - t0,
+                             build_resume_report(proc.alias, cf.image, drift))
 
     # --- lifecycle ---------------------------------------------------------
     def register_project(self, path: Path, alias: str, event: str = "init") -> tuple[Process, SnapshotResult]:
