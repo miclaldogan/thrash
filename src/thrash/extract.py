@@ -46,6 +46,12 @@ def sanitize(out: ModelOutput, allowed: set[str]) -> tuple[ModelOutput, int]:
 
 def ollama_extractor(cfg: Config) -> Extractor:
     schema = ModelOutput.model_json_schema()
+    # Saved legacy images remain permissive; new generations must address every
+    # restoration field explicitly (empty is valid when evidence is absent).
+    schema["required"] = list(schema["properties"])
+    for definition in schema.get("$defs", {}).values():
+        if "properties" in definition:
+            definition["required"] = list(definition["properties"])
 
     def run(alias: str, ctx: RepoContext, previous: ProcessImage | None, now: float) -> ProcessImage:
         user = public_text(prompts.build_user_prompt(alias, ctx.render(), previous))

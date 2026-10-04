@@ -65,3 +65,42 @@ def test_memory_uses_real_units(kernel3):
     assert '300' not in text
     assert '100 units' in text
     assert 'RESIDENT' in text
+
+
+@pytest.mark.asyncio
+async def test_irq_during_slow_worker_is_not_lost(kernel3, monkeypatch):
+    import threading
+    entered, release = threading.Event(), threading.Event()
+    original = kernel3.restore
+    def slow(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(kernel3, 'restore', slow)
+    app = KernelApp(kernel3)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await settled(app, pilot)
+        app.start('context', 'alpha')
+        for _ in range(100):
+            await pilot.pause(.01)
+            if entered.is_set(): break
+        app.start('irq', text='Preserve this idea during reconstruction')
+        assert app.pending_irqs
+        release.set()
+        await settled(app, pilot)
+        assert InterruptQueue(kernel3.cfg).read()[0].text == 'Preserve this idea during reconstruction'
+
+
+@pytest.mark.asyncio
+async def test_confirmed_core_can_be_inspected(kernel3):
+    app = KernelApp(kernel3)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await settled(app, pilot)
+        await pilot.press('k')
+        await pilot.click('#accept')
+        await settled(app, pilot)
+        assert kernel3.core_path('alpha').is_file()
+        await pilot.press('escape', 'c')
+        await settled(app, pilot)
+        assert app.screen.heading == 'CORE DUMP · alpha'
+        assert 'Termination:' in app.screen.content.plain

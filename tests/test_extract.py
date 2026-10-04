@@ -68,3 +68,17 @@ def test_invalid_output_keeps_previous_image(kernel, repos, clock):
     snap = kernel.snapshot(first)
     assert snap.error_kind == "invalid" and snap.image is not None  # previous image survives
     assert kernel.load_context(first).image.program_counter.task == "work on alpha"
+
+
+def test_generation_requests_resume_fields_without_breaking_old_images(monkeypatch, ctx):
+    from thrash.process_image import ProcessImage, ImageMeta
+    legacy = ProcessImage(project='game-alpha', program_counter={'task':'resume'},
+                          meta=ImageMeta(created_at=1, model='old'))
+    def fake(cfg, system, messages, schema=None):
+        assert {'summary', 'completed', 'decisions', 'next_action'} <= set(schema['required'])
+        assert 'reason' in schema['$defs']['Decision']['required']
+        return Reply(GOOD, .1)
+    monkeypatch.setattr(extract, 'chat_json', fake)
+    image = extract.ollama_extractor(Config())('game-alpha', ctx, legacy, 2)
+    assert image.meta.context_version == 2
+    assert image.completed == []  # missing evidence is never invented

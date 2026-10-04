@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "thrash-human-kernel"
-version = "0.1.0"
+version = "0.2.0"
 description = "A local AI human-process scheduler for people with too many projects in memory."
 readme = "README.md"
 license = { text = "MIT" }

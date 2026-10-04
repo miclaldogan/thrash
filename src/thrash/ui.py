@@ -178,6 +178,12 @@ def resume_text(report: ResumeReport) -> Text:
     items("WHAT REMAINS UNRESOLVED", report.unresolved)
     items("BLOCKERS", report.blockers)
     items("EVIDENCE", report.evidence)
+    if report.purpose:
+        items("PURPOSE", [report.purpose])
+    if report.failures:
+        items("FAILED APPROACHES", report.failures)
+    if report.resurrection_hint:
+        items("RETURN WHEN", [report.resurrection_hint])
     heading("NEXT EXECUTION")
     line("NEXT INSTRUCTION:", "dim")
     line(report.next_action or "Review the saved evidence and record one immediate next step.", "bold")

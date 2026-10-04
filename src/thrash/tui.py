@@ -16,6 +16,7 @@ from . import ui
 from .diagnostics import diagnose
 from .interrupts import InterruptQueue
 from .registry import State
+from .scheduler import CoreDump
 from .resume import build_resume_report
 from .visuals import VisualPressure
 
@@ -125,12 +126,15 @@ class KernelApp(App):
     CSS = '''
     Screen { background: #090f14; color: #d0dce0; }
     #identity { height: 3; padding: 0 1; background: #14212b; color: #75dfda; }
-    #metrics { height: 4; padding: 0 1; border-bottom: solid #28404d; }
+    #metrics { height: auto; min-height: 4; padding: 0 1; border-bottom: solid #28404d; }
     #body { height: 1fr; }
     #processes { width: 62%; height: 1fr; border: solid #28404d; }
     #right { width: 38%; padding: 0 1; }
+    .compact #processes { width: 100%; }
+    .compact #right { display: none; }
     #detail { height: auto; }
     #history { height: auto; margin-top: 1; }
+    #memory-summary { height: auto; margin-top: 1; }
     #view { height: 1fr; padding: 1 2; display: none; }
     #echo { height: 2; color: #be9470; padding: 0 1; }
     #notice { height: 2; background: #14212b; padding: 0 1; }
@@ -164,6 +168,7 @@ class KernelApp(App):
         self.swap_effect = None
         self.quit_pending = False
         self.aliases = []
+        self.pending_irqs = []
 
     def compose(self) -> ComposeResult:
         yield Static('THRASH HUMAN KERNEL\n1 human. 1 core. Too many processes.', id='identity')
@@ -173,6 +178,7 @@ class KernelApp(App):
             with VerticalScroll(id='right'):
                 yield Static('', id='detail', markup=False)
                 yield Static('', id='history', markup=False)
+                yield Static('', id='memory-summary', markup=False)
         with VerticalScroll(id='view'):
             yield Static('', id='alternate', markup=False)
         yield Static('', id='echo', markup=False)
@@ -188,6 +194,9 @@ class KernelApp(App):
         self.set_interval(3, self.refresh_monitor)
         self.set_interval(.8, self.animate_pressure)
 
+    def on_resize(self):
+        self.screen_stack[0].set_class(self.size.width < 100, 'compact')
+
     def selected(self):
         table = self.query_one(DataTable)
         return self.aliases[table.cursor_row] if self.aliases and table.cursor_row < len(self.aliases) else None
@@ -201,7 +210,12 @@ class KernelApp(App):
 
     def start(self, action, alias=None, text=None):
         if self.busy:
-            self.notice('Kernel operation in progress; wait for its durable result.')
+            if action == 'irq':
+                current = next((r['proc'].alias for r in self.view.rows if r['proc'].state == State.RUNNING), None) if self.view else None
+                self.pending_irqs.append((current, text))
+                self.notice('IRQ held in the interface; it will persist after the current kernel operation.')
+            else:
+                self.notice('Kernel operation in progress; wait for its durable result.')
             return
         self.busy = True
         if action != 'refresh':
@@ -230,6 +244,14 @@ class KernelApp(App):
                 message = 'Working set restored. Read NEXT INSTRUCTION before dispatching another process.'
                 if switched.out and switched.out.error:
                     message = 'Outgoing snapshot unavailable; previous image retained. ' + switched.out.error
+            elif action == 'context' and k.reg.resolve(alias, True).state == State.TERMINATED:
+                path = k.core_path(alias)
+                if not path.is_file():
+                    raise ValueError('No core dump was saved for this terminated process')
+                core = CoreDump.model_validate_json(path.read_text())
+                content = Text(ui.safe('Termination: ' + core.reason) + '\n\n')
+                content.append(ui.resume_text(build_resume_report(alias, core.image)))
+                result = ('CORE DUMP · ' + alias, content)
             elif action in ('context', 'wake'):
                 report = k.wake(alias) if action == 'wake' else k.restore(k.reg.resolve(alias, True), reconstruct=False)
                 result = ('PAGE FAULT · ' + alias if action == 'wake' else 'SAVED CONTEXT · ' + alias,
@@ -252,7 +274,7 @@ class KernelApp(App):
                 message = f'Core saved: graveyard/{alias}.core · repository untouched.'
             elif action == 'irq':
                 run = k.reg.running()
-                item = InterruptQueue(k.cfg).capture(ui.safe(text), k.clock(), run.alias if run else None)
+                item = InterruptQueue(k.cfg).capture(ui.safe(text), k.clock(), alias if alias is not None else run.alias if run else None)
                 k.tel.record('irq', k.clock(), irq_id=item.id, project=item.current)
                 message = f'IRQ #{item.id} queued. Current execution preserved.'
             elif action == 'ack':
@@ -281,15 +303,14 @@ class KernelApp(App):
     def failed(self, message):
         self.busy = False
         self.notice('Operation failed: ' + message)
-        if self.quit_pending:
-            self.exit()
+        self.finish_pending()
 
     def finished(self, view, irqs, result, message):
         selected = self.selected()
         self.view, self.irqs = view, irqs
         d = view.diagnostics
-        self.screen.remove_class('pressure', 'thrashing', 'panic')
-        self.screen.add_class(d.mode.lower())
+        self.screen_stack[0].remove_class('pressure', 'thrashing', 'panic')
+        self.screen_stack[0].add_class(d.mode.lower())
         self.query_one('#metrics', Static).update(Text(
             f'STATE: {d.mode}   ACTIVE {d.report.active}/{self.kernel.cfg.max_active}   '
             f'PRESSURE {d.report.pressure:.0%}   SWITCHES {d.report.switches}/{self.kernel.cfg.window_hours:g}h\n'
@@ -317,15 +338,27 @@ class KernelApp(App):
         for e in [e for e in view.events if e.get('type') == 'switch'][-6:]:
             history.append(ui.safe(f"{e.get('from_project') or 'idle'} → {e.get('to_project')}\n"), style='dim')
         self.query_one('#history', Static).update(history)
+        resident = sum(r['ctx'] or 0 for r in view.rows if r['proc'].state in (State.RUNNING, State.READY))
+        swapped = sum(r['ctx'] or 0 for r in view.rows if r['proc'].state == State.SLEEPING)
+        memory = Text('WORKING MEMORY\n', style='bold cyan')
+        memory.append(f'RESIDENT ≈{resident}u\nSWAP ≈{swapped}u\n', style='white')
+        memory.append('Saved context size, not RAM.\nTab opens the memory map.', style='dim')
+        self.query_one('#memory-summary', Static).update(memory)
         self.busy = False
         if message:
             self.notice(message)
             if '→ SWAP' in message:
                 self.swap_effect = (selected, 4)
-        if self.quit_pending:
-            self.exit()
-        elif result:
+        if result and not self.quit_pending:
             self.push_screen(ReportScreen(*result))
+        self.finish_pending()
+
+    def finish_pending(self):
+        if self.pending_irqs:
+            alias, text = self.pending_irqs.pop(0)
+            self.start('irq', alias=alias, text=text)
+        elif self.quit_pending:
+            self.exit()
 
     def on_data_table_row_highlighted(self, event):
         self.update_detail()
@@ -341,7 +374,9 @@ class KernelApp(App):
         cf = self.view.images[alias]
         text = Text(alias+'\n', style='bold cyan')
         if cf:
-            text.append('\nNEXT INSTRUCTION\n', style='bold')
+            text.append('\nSAVED NEXT INSTRUCTION\n', style='bold')
+            if self.view.now-cf.image.meta.created_at >= self.kernel.cfg.stale_hours*3600:
+                text.append('MAY BE STALE · C checks drift\n', style='yellow')
             text.append(ui.safe(cf.image.next_action or cf.image.program_counter.task)+'\n', style='white')
             text.append(f'\n{len(cf.image.completed)} completed · {len(cf.image.decisions)} decisions\n'
                         f'{len(cf.image.unresolved)} unresolved · {len(cf.image.blockers)} blockers\n', style='dim')

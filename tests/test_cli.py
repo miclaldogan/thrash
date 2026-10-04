@@ -67,3 +67,37 @@ def test_no_model_top_still_works(tmp_path, monkeypatch):
     r = runner.invoke(cli.app, ["init", "--path", str(make_repo(tmp_path / "r")), "--alias", "r"])
     assert r.exit_code == 0 and "LOCAL MODEL UNAVAILABLE" in r.output
     assert runner.invoke(cli.app, ["top"]).exit_code == 0
+
+
+def test_prompt2_cli_no_args_irq_and_admission(env):
+    from thrash.interrupts import InterruptQueue
+    cfg, clock, tmp = env
+    assert runner.invoke(cli.app, []).exit_code == 0
+    assert 'Usage:' in runner.invoke(cli.app, []).output
+    assert runner.invoke(cli.app, ['irq', '']).exit_code == 1
+    assert runner.invoke(cli.app, ['irq', 'Try a smaller test']).exit_code == 0
+    assert 'Try a smaller test' in runner.invoke(cli.app, ['interrupts']).output
+    assert runner.invoke(cli.app, ['interrupts', '--ack', '1']).exit_code == 0
+    assert InterruptQueue(cfg).read()[0].acknowledged
+    cfg.oom_active = 1
+    first, second = make_repo(tmp/'one'), make_repo(tmp/'two')
+    assert runner.invoke(cli.app, ['init', '--path', str(first), '--alias', 'game-alpha']).exit_code == 0
+    blocked = runner.invoke(cli.app, ['init', '--path', str(second), '--alias', 'paper-crane'])
+    assert blocked.exit_code == 1 and 'OUT OF MIND' in blocked.output
+    assert not (second/'.thrash').exists()
+    captured = runner.invoke(cli.app, ['fork', 'paper-crane', '--interrupt'])
+    assert captured.exit_code == 0
+    assert len(Kernel(cfg).reg.all()) == 1
+    admitted = runner.invoke(cli.app, ['fork', 'paper-crane', '--path', str(second), '--suspend', 'game-alpha'])
+    assert admitted.exit_code == 0, admitted.output
+    assert runner.invoke(cli.app, ['status', 'paper-crane', '--refresh']).exit_code == 0
+
+
+def test_demo_cli_never_uses_user_kernel(monkeypatch):
+    def forbidden():
+        raise AssertionError('Demo accessed user state')
+    monkeypatch.setattr(cli, 'get_kernel', forbidden)
+    result = runner.invoke(cli.app, ['demo', '--script'])
+    assert result.exit_code == 0, result.output
+    assert 'SYNTHETIC' in result.output and 'KERNEL MODE: PANIC' in result.output
+    assert '/tmp/' not in result.output
