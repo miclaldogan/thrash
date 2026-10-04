@@ -36,6 +36,7 @@ class Process(BaseModel):
     path: str
     state: State = State.READY
     registered_at: float
+    ready_since: float | None = None
     running_since: float | None = None
     last_suspended: float | None = None
     terminated_at: float | None = None
@@ -131,7 +132,7 @@ class Registry:
         if self.by_path(path):
             raise RegistryError(f"path already registered as {self.by_path(path).alias}")
         proc = Process(
-            pid=self.next_pid, alias=alias, path=str(absolute(Path(path))), state=State.READY, registered_at=now
+            pid=self.next_pid, alias=alias, path=str(absolute(Path(path))), state=State.READY, registered_at=now, ready_since=now
         )
         self.next_pid += 1
         self.processes.append(proc)
@@ -145,7 +146,9 @@ class Registry:
         for other in self.processes:
             if other.pid != proc.pid and other.state == State.RUNNING:
                 other.state = State.READY
+                other.ready_since = now
                 other.running_since = None
+        proc.ready_since = None
         proc.state = State.RUNNING
         proc.running_since = now
         self.save()
@@ -156,6 +159,7 @@ class Registry:
             return
         if state == State.ZOMBIE:
             raise RegistryError("ZOMBIE is derived, not assignable")
+        proc.ready_since = now if state == State.READY else None
         proc.state = state
         proc.running_since = None
         if state == State.SLEEPING:
@@ -164,12 +168,13 @@ class Registry:
             proc.terminated_at = now
         self.save()
 
-    def revive(self, proc: Process, path: str | Path) -> None:
+    def revive(self, proc: Process, path: str | Path, now: float | None = None) -> None:
         try:
             ScanPolicy(self.cfg.excluded_roots).require_root(Path(path))
         except ValueError as exc:
             raise RegistryError(str(exc)) from exc
         proc.path = str(absolute(Path(path)))
         proc.state = State.READY
+        proc.ready_since = now
         proc.terminated_at = None
         self.save()

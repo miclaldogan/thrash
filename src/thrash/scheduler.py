@@ -389,7 +389,7 @@ class Kernel:
         if existing and existing.state != State.TERMINATED:
             raise KernelError(f"{dump.alias} is already alive ({existing.state.value})")
         if existing:
-            self.reg.revive(existing, dump.path)
+            self.reg.revive(existing, dump.path, now)
             proc = existing
         else:
             proc = self.reg.register(dump.alias, dump.path, now)

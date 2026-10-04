@@ -50,6 +50,15 @@ class Config:
     stale_hours: float = 24.0
     zombie_days: float = 14.0
 
+    starvation_hours: float = 48.0
+    starvation_switches: int = 6
+    starvation_execution_min: float = 10.0
+    oom_active: int = 6
+    panic_active: int = 6
+    panic_switches: int = 20
+    panic_irqs: int = 8
+    panic_stale: int = 3
+
     @classmethod
     def from_env(cls) -> "Config":
         d = cls()
@@ -65,6 +74,10 @@ class Config:
         d.signals_required = int(_num("THRASH_SIGNALS_REQUIRED", d.signals_required))
         d.stale_hours = _num("THRASH_STALE_HOURS", d.stale_hours)
         d.zombie_days = _num("THRASH_ZOMBIE_DAYS", d.zombie_days)
+        for name in ("starvation_hours", "starvation_switches", "starvation_execution_min",
+                     "oom_active", "panic_active", "panic_switches", "panic_irqs", "panic_stale"):
+            default = getattr(d, name)
+            setattr(d, name, type(default)(_num("THRASH_" + name.upper(), default)))
         return d
 
     # --- storage layout -------------------------------------------------
