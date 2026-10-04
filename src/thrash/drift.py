@@ -69,7 +69,8 @@ def compute_drift(root: Path, image: ProcessImage, saved: Fingerprint, rules: Ig
             report.history_rewritten = True
         else:
             report.new_commits = n
-            commits = gc.recent_commits(root, min(n, 50), since_sha=saved.head)
+            commits = [c for c in gc.recent_commits(root, min(n, 50), since_sha=saved.head)
+                       if not c.files or any(not rules.is_ignored(f) for f in c.files)]
             changed.update(gc.files_changed_since(root, saved.head) or [])
     for rel, mtime in cur.files.items():
         old = saved.files.get(rel)

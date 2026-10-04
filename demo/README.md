@@ -15,3 +15,5 @@ Everything here is synthetic. No real project names.
 | E | `kill` writes a core dump; `resurrect` restores it and reports drift |
 
 See [`../docs/demo-script.md`](../docs/demo-script.md) for the narrated 3-minute version.
+
+`python demo/capture.py` regenerates the two SVG terminal captures from the checked-in synthetic offline transcript. It does not read any real projects or call a model.

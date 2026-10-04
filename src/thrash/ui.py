@@ -4,16 +4,33 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
+import re
 
 from rich.console import Console
-from rich.markup import escape as e
+from rich.markup import escape
 from rich.table import Table
 
 from . import KERNEL_VERSION
-from .config import tilde
 from .drift import DriftReport
 from .process_image import ProcessImage
 from .registry import Process, State
+from .privacy import public_text
+
+
+_project_names: dict[str, str] = {}
+
+
+def remember_project(proc: Process) -> None:
+    name = Path(proc.path).name
+    if name and name != proc.alias:
+        _project_names[name] = proc.alias
+
+
+def e(value: str) -> str:
+    value = public_text(value)
+    for name, alias in _project_names.items():
+        value = re.sub(r"(?<![\w.-])" + re.escape(name) + r"(?![\w.-])", alias, value)
+    return escape(value)
 
 console = Console(highlight=False)
 err_console = Console(stderr=True, highlight=False)
@@ -92,6 +109,7 @@ def dotted(key: str, val: str, width: int = 24) -> str:
 
 
 def render_status(proc: Process, img: ProcessImage | None, state: State) -> None:
+    remember_project(proc)
     console.print(f"[bold]PID {proc.pid_str}  {e(proc.alias)}  {state_cell(state)}[/bold]\n")
     if img is None:
         console.print("no process image. run [bold]thrash switch[/bold] / [bold]thrash init[/bold] with the local model up.")
@@ -138,6 +156,7 @@ def render_status(proc: Process, img: ProcessImage | None, state: State) -> None
 # --- page fault / restore ---------------------------------------------------
 def render_page_fault(proc: Process, img: ProcessImage | None, age_s: float | None, drift: DriftReport,
                       scanned: bool, error: str | None, error_kind: str | None, since_word: str = "suspend") -> None:
+    remember_project(proc)
     console.print("\n[bold magenta]PAGE FAULT[/bold magenta]\n")
     console.print(f"Restoring process {proc.pid_str}...\n")
     if img is None:
@@ -187,6 +206,8 @@ def render_drift(drift: DriftReport, since_word: str = "suspend") -> None:
 
 # --- tables -----------------------------------------------------------------
 def render_top(rows: list[dict], report, switches_today: int) -> None:
+    for row in rows:
+        remember_project(row["proc"])
     banner("1 HUMAN CORE\n")
     t = Table(box=None, pad_edge=False, show_edge=False)
     for col, just in (("PID", "left"), ("PROCESS", "left"), ("STATE", "left"), ("LOAD", "right"), ("CTX~", "right")):
@@ -216,6 +237,8 @@ def render_top(rows: list[dict], report, switches_today: int) -> None:
 
 
 def render_ps(rows: list[dict], images: dict[int, ProcessImage | None]) -> None:
+    for row in rows:
+        remember_project(row["proc"])
     t = Table(box=None, pad_edge=False, show_edge=False)
     for col in ("PID", "NAME", "STATE", "PC"):
         t.add_column(col, header_style="bold")
@@ -228,4 +251,4 @@ def render_ps(rows: list[dict], images: dict[int, ProcessImage | None]) -> None:
 
 
 def swap_line(path: Path | None) -> str:
-    return f"paged -> {tilde(path)}" if path else "nothing to page (no image)"
+    return f"paged -> swap/{e(path.name)}" if path else "nothing to page (no image)"

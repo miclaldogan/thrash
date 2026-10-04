@@ -1,1 +1,2 @@
-export THRASH_HOME="/home/misa/projects/thrash/demo/.thrash-home"
+# Source this from the repository root, as shown in demo/README.md.
+export THRASH_HOME="$PWD/demo/.thrash-home"

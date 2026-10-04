@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 
 class ImageError(Exception):
@@ -34,6 +34,12 @@ class Decision(BaseModel):
     text: str
     source: str = ""
     explicit: bool = True  # False = inferred by the model, not stated in the repo
+
+    @model_validator(mode="after")
+    def require_source(self) -> "Decision":
+        if not self.source.strip():
+            self.explicit = False
+        return self
 
 
 def _strs(v: Any) -> list[str]:

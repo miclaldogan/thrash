@@ -7,13 +7,15 @@ listed, read, or fingerprinted.
 from __future__ import annotations
 
 import os
+import hashlib
 import re
 import subprocess
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .config import Config
-from .privacy import IgnoreRules, redact
+from .privacy import IgnoreRules, ScanPolicy, absolute, read_safe, scan_safe, redact, public_text
 from .process_image import Fingerprint
 
 TODO_RE = re.compile(r"\b(?:TODO|FIXME|XXX)\b|^\s*[-*]\s*\[ \]", re.M)
@@ -23,9 +25,26 @@ MAX_INVENTORY = 2000
 
 
 def git(root: Path, *args: str) -> str | None:
+    if not ScanPolicy().allows(root):
+        return None
+    # Do not follow a linked Git directory or worktree indirection outside the root.
+    if (root / ".git").is_symlink() or (root / ".git").is_file():
+        return None
+    # Do not consult a parent repository for a plain directory, or Git object
+    # stores redirected elsewhere (worktrees/alternates are intentionally skipped).
+    if not (root / ".git").is_dir():
+        return None
+    for name in ("HEAD", "config", "index", "objects", "refs", "packed-refs", "objects/info"):
+        if not ScanPolicy().allows(root / ".git" / name):
+            return None
+    if (root / ".git/objects/info/alternates").exists() or (root / ".git/commondir").exists():
+        return None
     try:
         r = subprocess.run(
-            ["git", "-C", str(root), *args], capture_output=True, text=True, timeout=30, check=False
+            ["git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
+             "-C", str(root), *args],
+            capture_output=True, text=True, timeout=30, check=False,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0"},
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -36,9 +55,16 @@ def is_git_repo(root: Path) -> bool:
     return git(root, "rev-parse", "--is-inside-work-tree") is not None
 
 
-def toplevel(path: Path) -> Path | None:
-    out = git(path, "rev-parse", "--show-toplevel")
-    return Path(out.strip()) if out else None
+def toplevel(path: Path, policy: ScanPolicy | None = None) -> Path | None:
+    policy = policy or ScanPolicy()
+    path = absolute(path)
+    for candidate in (path, *path.parents):
+        if not policy.allows(candidate):
+            return None
+        out = git(candidate, "rev-parse", "--show-toplevel")
+        if out:
+            return Path(out.strip())
+    return None
 
 
 def head_sha(root: Path) -> str | None:
@@ -70,7 +96,7 @@ def recent_commits(root: Path, n: int = 15, since_sha: str | None = None) -> lis
         head = lines[0].split("|", 2)
         if len(head) < 3:
             continue
-        commits.append(Commit(head[0], float(head[1]), head[2], [l for l in lines[1:] if l.strip()]))
+        commits.append(Commit(head[0], float(head[1]), public_text(head[2]), [l for l in lines[1:] if l.strip()]))
     return commits
 
 
@@ -80,49 +106,73 @@ def commit_count_since(root: Path, sha: str) -> int | None:
 
 
 def files_changed_since(root: Path, sha: str) -> list[str] | None:
-    out = git(root, "diff", "--name-only", sha, "HEAD")
+    out = git(root, "diff", "--no-ext-diff", "--no-textconv", "--name-only", sha, "HEAD")
     return None if out is None else [l for l in out.splitlines() if l]
 
 
-def dirty_files(root: Path) -> list[str]:
-    out = git(root, "status", "--porcelain", "-uall")
-    files = []
-    for line in (out or "").splitlines():
-        path = line[3:].split(" -> ")[-1].strip().strip('"')
-        if path:
-            files.append(path)
-    return files
+def dirty_files(root: Path, rules: IgnoreRules | None = None,
+                files: dict[str, float] | None = None) -> list[str]:
+    """Compare allowed files to index hashes, without `git status` scanning secrets.
+
+    Git reads index metadata only. File bytes always pass through our no-follow
+    reader. Oversized/binary files are not semantically inspected.
+    """
+    rules = rules or IgnoreRules.load(root)
+    rules.policy.require_root(root)
+    files = inventory(root, rules) if files is None else files
+    index: dict[str, str] = {}
+    out = git(root, "ls-files", "--stage", "-z")
+    for record in (out or "").split("\0"):
+        if "\t" not in record:
+            continue
+        metadata, rel = record.split("\t", 1)
+        fields = metadata.split()
+        if len(fields) == 3 and fields[0] in ("100644", "100755") and not rules.is_ignored(rel):
+            index[rel] = fields[1]
+    dirty = set(files) - set(index)
+    dirty.update(rel for rel in index if rel not in files)
+    for rel in set(files) & set(index):
+        data = read_safe(root / rel, MAX_FILE_BYTES, rules.policy)
+        if data is None:
+            continue
+        header = f"blob {len(data)}\0".encode()
+        digest = hashlib.sha256(header + data) if len(index[rel]) == 64 else hashlib.sha1(header + data)
+        if digest.hexdigest() != index[rel]:
+            dirty.add(rel)
+    # Staged differences are between Git trees/index, never working-tree reads.
+    staged = git(root, "diff", "--cached", "--no-ext-diff", "--no-textconv", "--ignore-submodules=all", "--name-only", "-z")
+    dirty.update(rel for rel in (staged or "").split("\0") if rel and not rules.is_ignored(rel))
+    return sorted(dirty)
 
 
 def inventory(root: Path, rules: IgnoreRules) -> dict[str, float]:
-    """relpath -> mtime for every non-ignored file (tracked + untracked-not-gitignored)."""
-    out = git(root, "ls-files", "-co", "--exclude-standard")
-    if out is not None:
-        rels = [l for l in out.splitlines() if l]
-    else:
-        rels = []
-        for dp, dns, fns in os.walk(root):
-            dns[:] = [d for d in dns if not rules.is_ignored(os.path.relpath(os.path.join(dp, d), root) + "/x")]
-            rels += [os.path.relpath(os.path.join(dp, f), root) for f in fns]
+    """Only regular non-ignored files; prune excluded directories before descent."""
+    root = absolute(root)
+    rules.policy.require_root(root)
+    if rules.root is None:
+        rules.root = root
     inv: dict[str, float] = {}
-    for rel in rels:
-        if rules.is_ignored(rel):
-            continue
-        try:
-            inv[rel] = (root / rel).stat().st_mtime
-        except OSError:
-            continue
-        if len(inv) >= MAX_INVENTORY:
-            break
+    pending = [root]
+    while pending and len(inv) < MAX_INVENTORY:
+        directory = pending.pop()
+        for name, info in scan_safe(directory, rules.policy):
+            path = directory / name
+            rel = path.relative_to(root).as_posix()
+            if rules.is_ignored(rel) or stat.S_ISLNK(info.st_mode):
+                continue
+            if stat.S_ISDIR(info.st_mode):
+                if not rules.is_ignored(rel + "/"):
+                    pending.append(path)
+            elif stat.S_ISREG(info.st_mode):
+                inv[rel] = info.st_mtime
+                if len(inv) >= MAX_INVENTORY:
+                    break
     return inv
 
 
-def read_text(path: Path, limit: int) -> str | None:
-    try:
-        if path.stat().st_size > MAX_FILE_BYTES:
-            return None
-        data = path.read_bytes()[: limit * 4]
-    except OSError:
+def read_text(path: Path, limit: int, policy: ScanPolicy | None = None) -> str | None:
+    data = read_safe(path, limit * 4, policy)
+    if data is None:
         return None
     if b"\0" in data[:2048]:
         return None
@@ -130,13 +180,15 @@ def read_text(path: Path, limit: int) -> str | None:
 
 
 def current_fingerprint(root: Path, rules: IgnoreRules, now: float) -> Fingerprint:
+    rules.policy.require_root(root)
+    files = inventory(root, rules)
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
     return Fingerprint(
         head=head_sha(root),
         branch=branch.strip() if branch else None,
         taken_at=now,
-        dirty=sorted(f for f in dirty_files(root) if not rules.is_ignored(f)),
-        files=inventory(root, rules),
+        dirty=dirty_files(root, rules, files),
+        files=files,
     )
 
 
@@ -152,7 +204,7 @@ class RepoContext:
     last_activity: float | None
 
     def render(self) -> str:
-        return "\n\n".join(f"### {title}\n{body}" for title, body in self.sections if body.strip())
+        return public_text("\n\n".join(f"### {title}\n{body}" for title, body in self.sections if body.strip()))
 
 
 def _doc_score(rel: str, mtime: float) -> tuple[int, float]:
@@ -164,6 +216,9 @@ def _doc_score(rel: str, mtime: float) -> tuple[int, float]:
 
 
 def gather_context(root: Path, cfg: Config, rules: IgnoreRules, now: float) -> RepoContext:
+    policy = ScanPolicy(tuple(set(cfg.excluded_roots + rules.policy.excluded_roots)))
+    policy.require_root(root)
+    rules.policy = policy
     fp = current_fingerprint(root, rules, now)
     inv = fp.files
     budget = cfg.context_chars
@@ -176,6 +231,8 @@ def gather_context(root: Path, cfg: Config, rules: IgnoreRules, now: float) -> R
         lines = []
         for c in commits:
             files = [f for f in c.files if not rules.is_ignored(f)][:6]
+            if c.files and not files:
+                continue  # do not summarize work that concerns only ignored files
             lines.append(f"{c.sha} {_ago(now - c.ts)} ago: {c.subject}  [{', '.join(files)}]")
         sections.append(("RECENT COMMITS (newest first)", "\n".join(lines)))
     if fp.dirty:
@@ -194,17 +251,17 @@ def gather_context(root: Path, cfg: Config, rules: IgnoreRules, now: float) -> R
     todo_samples: list[str] = []
     for rel, _ in docs:
         score = _doc_score(rel, 0)[0]
-        text = read_text(root / rel, 4000 if score else 1500)
+        text = read_text(root / rel, 4000 if score else 1500, policy)
         if text is None:
             continue
+        text, n = redact(text)
+        redactions += n
         todo_count += len(TODO_RE.findall(text))
         for m in re.finditer(r"^.*(?:TODO|FIXME|XXX|\[ \]).*$", text, re.M):
             if len(todo_samples) < 25:
                 todo_samples.append(f"{rel}: {m.group(0).strip()[:120]}")
         if score == 0 or used >= doc_budget:
             continue
-        text, n = redact(text)
-        redactions += n
         take = text[: max(0, doc_budget - used)]
         used += len(take)
         sections.append((f"FILE {rel}", take))
@@ -218,7 +275,7 @@ def gather_context(root: Path, cfg: Config, rules: IgnoreRules, now: float) -> R
             break
         if _doc_score(rel, 0)[0]:
             continue
-        text = read_text(root / rel, min(1500, src_budget))
+        text = read_text(root / rel, min(1500, src_budget), policy)
         if not text:
             continue
         text, n = redact(text)
@@ -227,9 +284,14 @@ def gather_context(root: Path, cfg: Config, rules: IgnoreRules, now: float) -> R
         shown += 1
         sections.append((f"SOURCE (head) {rel}", text))
 
-    activity = [last_commit_ts(root)] + [(root / f).stat().st_mtime for f in fp.dirty if (root / f).exists()]
+    activity = [last_commit_ts(root)] + [inv[f] for f in fp.dirty if f in inv]
+    clean_sections = []
+    for title, body in sections:
+        body, n = redact(body)
+        redactions += n
+        clean_sections.append((public_text(title), public_text(body)))
     return RepoContext(
-        sections=sections,
+        sections=clean_sections,
         allowed_paths=set(inv),
         fingerprint=fp,
         todo_count=todo_count,
@@ -249,12 +311,12 @@ def _ago(seconds: float) -> str:
 
 def repo_last_activity(root: Path, rules: IgnoreRules) -> float | None:
     """Latest commit time or latest mtime of an uncommitted, non-ignored file."""
+    rules.policy.require_root(root)
+    inv = inventory(root, rules)
     stamps = [last_commit_ts(root)]
-    for f in dirty_files(root):
+    for f in dirty_files(root, rules, inv):
         if rules.is_ignored(f):
             continue
-        try:
-            stamps.append((root / f).stat().st_mtime)
-        except OSError:
-            pass
+        if f in inv:
+            stamps.append(inv[f])
     return max((s for s in stamps if s), default=None)

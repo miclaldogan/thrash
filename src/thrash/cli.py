@@ -10,10 +10,11 @@ from pathlib import Path
 import typer
 
 from . import __version__, git_context as gc, ui
-from .config import Config, tilde
+from .config import Config
 from .ollama_client import ModelError
 from .registry import RegistryError, State, slugify
 from .scheduler import Kernel, KernelError, init_git_dir
+from .privacy import ScanPolicy, absolute
 
 app = typer.Typer(
     help="THRASH: a local human-process scheduler. It serializes and restores project context.",
@@ -22,7 +23,10 @@ app = typer.Typer(
 
 
 def get_kernel() -> Kernel:
-    return Kernel(Config.from_env())
+    kernel = Kernel(Config.from_env())
+    for proc in kernel.reg.all(include_terminated=True):
+        ui.remember_project(proc)
+    return kernel
 
 
 def guard(fn):
@@ -73,8 +77,12 @@ def init(
 ):
     """Register the current project as a process and build its first process image."""
     k = get_kernel()
-    start = (path or Path.cwd()).resolve()
-    root = gc.toplevel(start) or start
+    start = absolute(path or Path.cwd())
+    try:
+        ScanPolicy(k.cfg.excluded_roots).require_root(start)
+    except ValueError as exc:
+        raise KernelError(str(exc)) from exc
+    root = gc.toplevel(start, ScanPolicy(k.cfg.excluded_roots)) or start
     if not gc.is_git_repo(root):
         ui.console.print("[yellow]no Git repository detected: continuing with a plain file scan.[/yellow]")
     existing = k.reg.by_path(root)
@@ -90,6 +98,7 @@ def init(
             alias = typer.prompt("Public-safe alias (shown in all output)", default=default) if _interactive() else default
         ui.console.print("\nRegistering process...\n")
         proc = k.reg.register(slugify(alias) if alias != alias.lower() else alias, root, k.clock())
+        ui.remember_project(proc)
         k.tel.record("init", k.clock(), project=proc.alias)
         ui.console.print(f"PID       {proc.pid_str}\nNAME      {ui.e(proc.alias)}\nSTATE     {ui.state_cell(proc.state)}\n")
         with ui.working("Building working set..."):
@@ -226,11 +235,17 @@ def fork(
         else:
             ui.console.print("[dim]non-interactive: forking anyway (--suspend NAME or --force to silence).[/dim]\n")
     if create:
-        root = (Path.cwd() / name).resolve()
+        root = absolute(Path.cwd() / name)
+        if not ScanPolicy(k.cfg.excluded_roots).allows(root):
+            raise KernelError("excluded or unsafe project root")
         init_git_dir(root)
     else:
-        start = (path or Path.cwd()).resolve()
-        root = gc.toplevel(start) or start
+        start = absolute(path or Path.cwd())
+        try:
+            ScanPolicy(k.cfg.excluded_roots).require_root(start)
+        except ValueError as exc:
+            raise KernelError(str(exc)) from exc
+        root = gc.toplevel(start, ScanPolicy(k.cfg.excluded_roots)) or start
     if taken := k.reg.by_path(root):
         raise KernelError(f"that directory is already process {taken.alias}. use --path or --create.")
     proc = k.reg.register(name, root, k.clock())
@@ -263,7 +278,7 @@ def kill(
     if core is None:
         core = True if yes or not _interactive() else typer.confirm("Create core dump?", default=True)
     path = k.kill(plan, core)
-    ui.console.print(f"core dumped:\n{tilde(path)}" if path else "process terminated. no core dump.")
+    ui.console.print(f"core dumped:\ngraveyard/{ui.e(path.name)}" if path else "process terminated. no core dump.")
 
 
 @app.command()
@@ -272,6 +287,7 @@ def resurrect(core: str = typer.Argument(..., help="Alias in the graveyard, or p
     """Re-register a terminated process from its core dump."""
     k = get_kernel()
     proc, dump, drift, age = k.resurrect(core)
+    ui.remember_project(proc)
     ui.console.print("Restoring terminated process...\n")
     pc = dump.image.program_counter.task if dump.image else "unknown"
     ui.console.print(f"last known PC:\n  {ui.e(pc)}\n\nage:\n  {ui.fmt_age(age)}\n\nrepository drift:\n  {drift.level}")

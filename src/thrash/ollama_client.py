@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
+import ipaddress
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -33,6 +35,26 @@ class Reply:
     seconds: float
 
 
+def local_url(cfg: Config) -> str:
+    """Only a loopback server; ignore proxies and avoid resolving arbitrary hosts."""
+    try:
+        url = urlsplit(cfg.ollama_url)
+        host = url.hostname
+        if host == "localhost":
+            host = "127.0.0.1"
+        if url.scheme not in ("http", "https") or not host or not ipaddress.ip_address(host).is_loopback:
+            raise ValueError
+        if url.username or url.password or url.query or url.fragment or url.path not in ("", "/"):
+            raise ValueError
+        port = url.port or (443 if url.scheme == "https" else 80)
+        address = f"[{host}]" if ":" in host else host
+        if "cloud" in cfg.model.lower():
+            raise ValueError
+        return f"{url.scheme}://{address}:{port}"
+    except ValueError as exc:
+        raise ModelError("Only local Ollama on a loopback address and local models are allowed") from exc
+
+
 def _same_model(wanted: str, have: str) -> bool:
     if wanted == have:
         return True
@@ -40,10 +62,11 @@ def _same_model(wanted: str, have: str) -> bool:
 
 
 def check_ready(cfg: Config, client: httpx.Client | None = None) -> None:
+    url = local_url(cfg)
     own = client is None
-    client = client or httpx.Client(timeout=5.0)
+    client = client or httpx.Client(timeout=5.0, trust_env=False)
     try:
-        r = client.get(f"{cfg.ollama_url}/api/tags")
+        r = client.get(f"{url}/api/tags")
         r.raise_for_status()
         names = [m.get("name", "") for m in r.json().get("models", [])]
     except httpx.HTTPError as e:
@@ -58,8 +81,9 @@ def check_ready(cfg: Config, client: httpx.Client | None = None) -> None:
 def chat_json(cfg: Config, system: str, messages: list[dict], schema: dict | None = None,
               client: httpx.Client | None = None) -> Reply:
     """One non-streaming chat call constrained to JSON (schema-constrained when given)."""
+    url = local_url(cfg)
     own = client is None
-    client = client or httpx.Client(timeout=cfg.request_timeout)
+    client = client or httpx.Client(timeout=cfg.request_timeout, trust_env=False)
     payload = {
         "model": cfg.model,
         "stream": False,
@@ -69,7 +93,7 @@ def chat_json(cfg: Config, system: str, messages: list[dict], schema: dict | Non
     }
     t0 = time.monotonic()
     try:
-        r = client.post(f"{cfg.ollama_url}/api/chat", json=payload)
+        r = client.post(f"{url}/api/chat", json=payload)
         if r.status_code == 404:
             raise ModelMissing(cfg.model, [])
         r.raise_for_status()

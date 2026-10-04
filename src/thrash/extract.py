@@ -9,6 +9,7 @@ from . import prompts
 from .config import Config
 from .git_context import RepoContext
 from .ollama_client import ModelError, chat_json
+from .privacy import public_text
 from .process_image import (
     ImageError,
     ImageMeta,
@@ -33,10 +34,11 @@ def sanitize(out: ModelOutput, allowed: set[str]) -> tuple[ModelOutput, int]:
         dropped += 0 if good else 1
         return good
 
-    out.open_handles = [p.removeprefix("./") for p in out.open_handles if ok(p)]
-    out.evidence = [p.removeprefix("./") for p in out.evidence if ok(p)]
+    out.open_handles = [p.strip().removeprefix("./") for p in out.open_handles if ok(p)]
+    out.evidence = [p.strip().removeprefix("./") for p in out.evidence if ok(p)]
     for d in out.decisions:
-        if d.source and not ok(d.source):
+        d.source = d.source.strip().removeprefix("./")
+        if not d.source or not ok(d.source):
             d.source = ""
             d.explicit = False  # a decision we cannot source is inference at best
     return out, dropped
@@ -46,7 +48,7 @@ def ollama_extractor(cfg: Config) -> Extractor:
     schema = ModelOutput.model_json_schema()
 
     def run(alias: str, ctx: RepoContext, previous: ProcessImage | None, now: float) -> ProcessImage:
-        user = prompts.build_user_prompt(alias, ctx.render(), previous)
+        user = public_text(prompts.build_user_prompt(alias, ctx.render(), previous))
         messages = [{"role": "user", "content": user}]
         t0 = time.monotonic()
         reply = chat_json(cfg, prompts.SYSTEM, messages, schema)
@@ -55,7 +57,7 @@ def ollama_extractor(cfg: Config) -> Extractor:
         except ImageError as first:
             # one repair attempt, then give up loudly: never store a guess
             messages += [
-                {"role": "assistant", "content": reply.text[:2000]},
+                {"role": "assistant", "content": public_text(reply.text[:2000])},
                 {"role": "user", "content": prompts.build_repair_prompt(str(first))},
             ]
             reply = chat_json(cfg, prompts.SYSTEM, messages, schema)

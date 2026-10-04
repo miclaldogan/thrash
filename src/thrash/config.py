@@ -38,6 +38,7 @@ class Config:
     num_ctx: int = 8192
     request_timeout: float = 600.0
     context_chars: int = 14000  # budget of repository text sent to the model
+    excluded_roots: tuple[Path, ...] = ()
 
     # scheduler heuristic thresholds
     window_hours: float = 4.0
@@ -54,6 +55,7 @@ class Config:
         d = cls()
         d.model = os.environ.get("THRASH_MODEL", d.model)
         d.ollama_url = os.environ.get("THRASH_OLLAMA_URL", d.ollama_url).rstrip("/")
+        d.excluded_roots = tuple(Path(p) for p in os.environ.get("THRASH_EXCLUDE_ROOTS", "").split(os.pathsep) if p)
         d.num_ctx = int(_num("THRASH_NUM_CTX", d.num_ctx))
         d.window_hours = _num("THRASH_WINDOW_HOURS", d.window_hours)
         d.switch_limit = int(_num("THRASH_SWITCH_LIMIT", d.switch_limit))

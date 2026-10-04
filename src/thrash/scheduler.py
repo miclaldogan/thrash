@@ -21,7 +21,7 @@ from .config import Config
 from .drift import DriftReport, compute_drift
 from .extract import Extractor, ollama_extractor
 from .ollama_client import ModelError, check_ready
-from .privacy import IgnoreRules
+from .privacy import IgnoreRules, ScanPolicy
 from .process_image import ContextFile, Fingerprint, ImageError, ProcessImage
 from .registry import Process, Registry, RegistryError, State
 from .telemetry import Telemetry
@@ -85,10 +85,12 @@ def load_shares(events: list[dict], running: Process | None, now: float, hours: 
     since = now - hours * 3600
     secs: dict[str, float] = {}
     for e in events:
-        if e["ts"] >= since and e.get("ended_project") and e.get("session_seconds") is not None:
-            secs[e["ended_project"]] = secs.get(e["ended_project"], 0.0) + e["session_seconds"]
-    if running and running.running_since:
-        secs[running.alias] = secs.get(running.alias, 0.0) + max(0.0, now - running.running_since)
+        if since <= e["ts"] <= now and e.get("ended_project") and e.get("session_seconds") is not None:
+            start = e["ts"] - max(0.0, e["session_seconds"])
+            duration = max(0.0, e["ts"] - max(since, start))
+            secs[e["ended_project"]] = secs.get(e["ended_project"], 0.0) + duration
+    if running and running.running_since is not None:
+        secs[running.alias] = secs.get(running.alias, 0.0) + max(0.0, now - max(since, running.running_since))
     total = sum(secs.values())
     return {k: v / total for k, v in secs.items()} if total else {}
 
@@ -189,7 +191,7 @@ class Kernel:
         return self.cfg.graveyard_dir / f"{alias}.core"
 
     def rules(self, p: Process) -> IgnoreRules:
-        return IgnoreRules.load(Path(p.path), self.cfg.global_ignore_path)
+        return IgnoreRules.load(Path(p.path), self.cfg.global_ignore_path, ScanPolicy(self.cfg.excluded_roots))
 
     def load_context(self, p: Process) -> ContextFile | None:
         return ContextFile.read(self.image_path(p))
@@ -204,6 +206,8 @@ class Kernel:
     def snapshot(self, proc: Process, force: bool = False) -> SnapshotResult:
         now = self.clock()
         root = Path(proc.path)
+        if not ScanPolicy(self.cfg.excluded_roots).allows(root):
+            return SnapshotResult(None, error="excluded or unsafe project root", error_kind="path")
         prev = self.load_context(proc)
         if not root.is_dir():
             return SnapshotResult(prev.image if prev else None, error=f"project path is gone: {proc.alias}", error_kind="path")
@@ -233,7 +237,11 @@ class Kernel:
     def restore(self, proc: Process) -> RestoreReport:
         t0 = time.monotonic()
         now = self.clock()
-        cf = ContextFile.read(self.swap_path(proc)) or self.load_context(proc)
+        if not ScanPolicy(self.cfg.excluded_roots).allows(Path(proc.path)):
+            raise KernelError("excluded or unsafe project root")
+        candidates = [self.load_context(proc), ContextFile.read(self.swap_path(proc))]
+        # Resident wins ties (e.g. forced rescans with an unchanged test clock).
+        cf = max((c for c in candidates if c is not None), key=lambda c: c.saved_at, default=None)
         scanned, err, kind = False, None, None
         if cf is None:
             snap = self.snapshot(proc, force=True)
@@ -251,6 +259,7 @@ class Kernel:
 
     # --- lifecycle ---------------------------------------------------------
     def register_project(self, path: Path, alias: str, event: str = "init") -> tuple[Process, SnapshotResult]:
+        ScanPolicy(self.cfg.excluded_roots).require_root(path)
         now = self.clock()
         proc = self.reg.register(alias, path, now)
         self.tel.record(event, now, project=proc.alias)
@@ -350,7 +359,9 @@ class Kernel:
             )
             path = self.core_path(proc.alias)
             self.cfg.graveyard_dir.mkdir(parents=True, exist_ok=True)
-            path.write_text(dump.model_dump_json(indent=2), encoding="utf-8")
+            tmp = path.with_suffix(".core.tmp")
+            tmp.write_text(dump.model_dump_json(indent=2), encoding="utf-8")
+            tmp.replace(path)
         self.reg.set_state(proc, State.TERMINATED, now)
         self.tel.record("kill", now, project=proc.alias, core=bool(path), ended_project=proc.alias if session is not None else None,
                         session_seconds=session)
@@ -365,6 +376,8 @@ class Kernel:
             dump = CoreDump.model_validate_json(core_file.read_text(encoding="utf-8"))
         except ValueError as e:
             raise KernelError(f"core dump unreadable: {core_file.name}") from e
+        if not ScanPolicy(self.cfg.excluded_roots).allows(Path(dump.path)):
+            raise KernelError("excluded or unsafe project root")
         if not Path(dump.path).is_dir():
             raise KernelError("repository path in the core dump no longer exists")
         now = self.clock()
@@ -389,7 +402,7 @@ class Kernel:
     def current(self, cwd: Path | None = None) -> Process | None:
         if run := self.reg.running():
             return run
-        if cwd and (top := gc.toplevel(cwd)):
+        if cwd and (top := gc.toplevel(cwd, ScanPolicy(self.cfg.excluded_roots))):
             return self.reg.by_path(top)
         return None
 
@@ -400,6 +413,8 @@ class Kernel:
         shares = load_shares(events, self.reg.running(), now)
         rows = []
         for p in procs:
+            if not ScanPolicy(self.cfg.excluded_roots).allows(Path(p.path)):
+                continue
             cf = self.load_context(p)
             img = cf.image if cf else None
             root = Path(p.path)

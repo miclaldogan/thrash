@@ -15,6 +15,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from .config import Config
+from .privacy import ScanPolicy, absolute
 
 
 class RegistryError(Exception):
@@ -84,20 +85,23 @@ class Registry:
 
     # --- queries --------------------------------------------------------
     def all(self, include_terminated: bool = False) -> list[Process]:
-        return [p for p in self.processes if include_terminated or p.state != State.TERMINATED]
+        policy = ScanPolicy(self.cfg.excluded_roots)
+        return [p for p in self.processes if not policy.excluded(Path(p.path))
+                and (include_terminated or p.state != State.TERMINATED)]
 
     def running(self) -> Process | None:
-        return next((p for p in self.processes if p.state == State.RUNNING), None)
+        return next((p for p in self.all() if p.state == State.RUNNING), None)
 
     def by_path(self, path: str | Path) -> Process | None:
-        real = os.path.realpath(path)
+        real = absolute(Path(path))
         return next(
-            (p for p in self.processes if p.state != State.TERMINATED and os.path.realpath(p.path) == real),
+            (p for p in self.processes if p.state != State.TERMINATED and absolute(Path(p.path)) == real),
             None,
         )
 
     def resolve(self, ref: str, include_terminated: bool = False) -> Process:
-        pool = self.all(include_terminated)
+        policy = ScanPolicy(self.cfg.excluded_roots)
+        pool = [p for p in self.all(include_terminated) if policy.allows(Path(p.path))]
         key = ref.strip().lower()
         for p in pool:
             if p.alias == key:
@@ -115,6 +119,10 @@ class Registry:
 
     # --- mutations ------------------------------------------------------
     def register(self, alias: str, path: str | Path, now: float, state: State = State.READY) -> Process:
+        try:
+            ScanPolicy(self.cfg.excluded_roots).require_root(Path(path))
+        except ValueError as exc:
+            raise RegistryError(str(exc)) from exc
         alias = alias.strip().lower()
         if not _ALIAS_RE.match(alias):
             raise RegistryError(f"invalid alias {alias!r} (use letters, digits, . _ -)")
@@ -123,7 +131,7 @@ class Registry:
         if self.by_path(path):
             raise RegistryError(f"path already registered as {self.by_path(path).alias}")
         proc = Process(
-            pid=self.next_pid, alias=alias, path=os.path.realpath(path), state=State.READY, registered_at=now
+            pid=self.next_pid, alias=alias, path=str(absolute(Path(path))), state=State.READY, registered_at=now
         )
         self.next_pid += 1
         self.processes.append(proc)
@@ -157,7 +165,11 @@ class Registry:
         self.save()
 
     def revive(self, proc: Process, path: str | Path) -> None:
-        proc.path = os.path.realpath(path)
+        try:
+            ScanPolicy(self.cfg.excluded_roots).require_root(Path(path))
+        except ValueError as exc:
+            raise RegistryError(str(exc)) from exc
+        proc.path = str(absolute(Path(path)))
         proc.state = State.READY
         proc.terminated_at = None
         self.save()

@@ -112,6 +112,8 @@ The system is spending too much time restoring context.
 
 Reproduce everything: `demo/run_demo.sh` (needs Ollama + a Gemma model). The demo uses an isolated `THRASH_HOME`, so your real state is untouched. The 71-hour age is simulated with `demo/age_image.py`, which is labeled demo tooling; THRASH never fakes time.
 
+Saved synthetic terminal captures: [page fault](docs/examples/page-fault.svg) and [thrashing](docs/examples/thrashing.svg). These are rendered from the [network-isolated demo transcript](docs/examples/offline-demo-run.txt); no real-project data is used.
+
 ## Processes
 
 | State | Meaning | How it is decided |
@@ -129,7 +131,7 @@ Killing a process only changes THRASH's state. Your repository is never touched.
 `thrash switch <project>` does, in order:
 
 1. inspect the leaving project's repository (commits, dirty files, notes, TODOs),
-2. build or update its process image (skipped if the repository is byte-for-byte unchanged since the last image: *working set unchanged: image reused*),
+2. build or update its process image (reused when the inspected fingerprint—HEAD, dirty paths and allowed-file modification times—matches the last image),
 3. page it out to `swap/<alias>.ctx`,
 4. record the switch and move it to `READY`,
 5. restore the destination image (**PAGE FAULT**),
@@ -154,14 +156,19 @@ Gemma is **not** responsible for timestamps, switch counts, pressure, file disco
 
 THRASH reads the contents of unreleased, private projects. That context should not leave the machine. It runs on a local Gemma through Ollama: no API keys, no cloud, no telemetry. In a test run, every `connect()` made during a real switch targeted `127.0.0.1:11434` / `::1:11434` and nothing else. If Ollama is down, deterministic commands (`top`, `ps`, `status`, state changes) keep working and extraction reports `LOCAL MODEL UNAVAILABLE`.
 
+The synthetic demo also passed with both THRASH and a temporary Ollama server inside a network namespace with only loopback available. This verifies operation without an external network interface, with model weights already installed. See [verification notes](docs/foundation-verification.md).
+
 ## Privacy
 
-- **Aliases.** Every command displays the alias you chose at `init`, never the directory name or path (paths live only in `registry.json`).
+- **Aliases.** Choose a public-safe alias at `init`. Terminal output masks absolute local paths and substitutes registered directory names with their aliases. Storage messages use `swap/<alias>.ctx` and `graveyard/<alias>.core`. Real repository paths remain in the private registry and core dumps so resurrection can find the repository.
 - **`.thrashignore`** (project root, plus `$THRASH_HOME/thrashignore` globally): ignored paths are never listed, read, fingerprinted or sent to the model. Defaults: `.env`, `*.pem`, `*.key`, `credentials*`, `secrets*`, `node_modules/`, `.venv/`, `dist/`, `build/`, `.git/`, ... Syntax is a gitignore subset (no `!` negation).
-- **Redaction.** Secret-looking assignments (`api_key = ...`, `password: ...`, known token shapes, private-key blocks) are masked even in files that are allowed.
+- **Filesystem boundaries.** All symlinks are skipped, including linked ignore files. `.gitignore` applies even to tracked files; nested ignore rules apply to plain directories too. Sensitive configuration, credentials, tokens, certificates and key files are excluded by default. POSIX file reads open each path component without following links; platforms without that primitive skip file reads.
+- **Excluded roots.** `THRASH_EXCLUDE_ROOTS` is an OS-path-separator-delimited list of absolute directory roots. Exclusions are checked before filesystem inspection or discovery descent. Registration rejects excluded or linked roots.
+- **Redaction.** Secret-looking assignments (`api_key = ...`, `password: ...`, known token shapes, private-key blocks) are masked in document bodies, TODO samples, commit subjects, assembled prompts and terminal text. Pattern matching is not a guarantee that every possible secret can be recognized; use ignore rules for sensitive material.
+- **Local transport.** Ollama endpoints must be literal loopback addresses or `localhost`; environment proxies and cloud model names are rejected/disabled. The Ollama server itself must also be configured to use local models.
 - **No surveillance.** No keystrokes, no browser history, no global process scanning. THRASH logs only what THRASH itself does (`events.jsonl`).
 
-Limit: a README or note that *contains* your real project name will still reach the local model and may appear in a generated summary. Use an alias *and* check what your notes say.
+Limit: prose may contain private identities other than the registered directory name. Aliases cannot identify arbitrary personal/company names automatically. Real-project verification stays private; public examples and screenshots use only synthetic repositories.
 
 ## How thrashing is detected
 
@@ -227,7 +234,7 @@ ui.py          ▼
         process_image.py   schemas + strict validation
 ```
 
-Storage (`~/.local/share/thrash/`): `registry.json`, `events.jsonl`, `processes/NNN.json` (live image + fingerprint), `swap/<alias>.ctx` (paged-out copy), `graveyard/<alias>.core`. JSON/JSONL only, no database. Writes are atomic.
+Storage (`~/.local/share/thrash/`): `registry.json`, `events.jsonl`, `processes/NNN.json` (live image + fingerprint), `swap/<alias>.ctx` (paged-out copy), `graveyard/<alias>.core`. Registry, image, swap and core files use atomic replacement. Events are appended to JSONL; malformed/torn lines are skipped when reading. Restoration selects the newest valid resident/swap copy, preferring the resident on timestamp ties.
 
 Events carry: timestamp, from/to project, time since last switch, snapshot age, restore duration, session length, whether reconstruction was needed, drift level, and the destination's last commit time.
 
@@ -240,6 +247,7 @@ Events carry: timestamp, from/to project, time since last switch, snapshot age, 
 - Heuristic thresholds are defaults I picked, not validated against anyone. Tune them.
 - Single user, single machine, Linux-first (paths are platform-aware; only Linux was tested).
 - No shell integration yet: it records what you tell THRASH, not what you do.
+- Fingerprints use file modification times rather than content digests; edits that preserve timestamps and dirty-path membership can evade reuse/drift detection. Inventory is capped at 2,000 allowed files. Files larger than 200 KB are not read; working-tree reads skip symlinks and Git worktree/alternate-object-store indirection.
 
 ## License
 

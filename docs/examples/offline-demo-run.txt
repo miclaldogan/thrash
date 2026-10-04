@@ -1,0 +1,292 @@
+
+================ SETUP: register five synthetic projects ================
+registered game-alpha
+registered research-beta
+registered robot-lab
+registered paper-crane
+registered old-agent
+
+================ DEMO A: normal switch ================
+$ thrash switch research-beta
+CONTEXT SWITCH
+
+FROM  (idle)
+TO    research-beta
+
+Restoring working set...
+████████████████████ 100%
+
+PAGE FAULT
+
+Restoring process 002...
+
+PC  -> run baseline sweep  (conf 0.70)
+
+STACK RESTORED  (1 frames)
+
+Process image is 36 sec old.
+
+No drift since suspend.
+
+NEXT INSTRUCTION:
+run baseline sweep
+
+$ thrash switch game-alpha
+CONTEXT SWITCH
+
+FROM  research-beta
+TO    game-alpha
+
+Saving working set...
+████████████████████ 100%
+1 decision
+4 active files
+1 unresolved question
+1 blocker
+working set unchanged: image reused
+
+paged -> swap/research-beta.ctx
+
+PAGE FAULT
+
+Restoring process 001...
+
+PC  -> rig jaw  (conf 0.80)
+
+STACK RESTORED  (1 frames)
+
+Process image is 79 sec old.
+
+No drift since suspend.
+
+NEXT INSTRUCTION:
+Rig the jaw.
+
+0 sec since previous switch · restore 0.01s
+
+
+================ DEMO B: page fault on a stale image ================
+$ thrash switch robot-lab
+CONTEXT SWITCH
+
+FROM  game-alpha
+TO    robot-lab
+
+Saving working set...
+████████████████████ 100%
+2 decisions
+4 active files
+1 unresolved question
+0 blockers
+working set unchanged: image reused
+
+paged -> swap/game-alpha.ctx
+
+PAGE FAULT
+
+Restoring process 003...
+
+PC  -> calibration  (conf 0.80)
+
+STACK RESTORED  (1 frames)
+
+Process image is 25 sec old.
+
+No drift since suspend.
+
+NEXT INSTRUCTION:
+Investigate drift in legs 5 and 6.
+
+0 sec since previous switch · restore 0.02s
+
+game-alpha: image aged by 71h
+$ thrash switch game-alpha
+CONTEXT SWITCH
+
+FROM  robot-lab
+TO    game-alpha
+
+Saving working set...
+████████████████████ 100%
+1 decision
+2 active files
+1 unresolved question
+0 blockers
+working set unchanged: image reused
+
+paged -> swap/robot-lab.ctx
+
+PAGE FAULT
+
+Restoring process 001...
+
+PC  -> rig jaw  (conf 0.80)
+
+STACK RESTORED  (1 frames)
+
+Process image is 71 hours old.
+
+POSSIBLE DRIFT (LOW)  since suspend:
++ 1 new commit
+    engine: start integration scaffold
++ 1 relevant file changed
+    engine/integration.gd
+
+NEXT INSTRUCTION:
+Rig the jaw.
+
+0 sec since previous switch · restore 0.06s
+
+$ thrash status
+PID 001  game-alpha  RUNNING
+
+PROGRAM COUNTER
+rig jaw  (model-reported confidence 0.80)
+
+STACK
+1. rig jaw
+
+OPEN HANDLES
+README.md
+TODO.md
+docs/character.md
+notes/rig.md
+
+DECISIONS
+- Jaw is not rigged yet. Rig the jaw, then the rest of the face. (inferred)  <- 
+notes/rig.md
+- do not begin engine integration before the rig test.  <- notes/rig.md
+
+UNRESOLVED
+- hair physics
+
+NEXT ACTION
+Rig the jaw.
+
+image: model gemma3:4b · ~201u (estimate) · extract 42.87s · 0 invalid path(s) 
+rejected · 0 redaction(s)
+
+
+================ DEMO C: thrashing ================
+$ thrash top
+THRASH HUMAN KERNEL 0.1
+1 HUMAN CORE
+
+PID  PROCESS        STATE    LOAD  CTX~
+001  game-alpha     RUNNING    8%  205u
+002  research-beta  READY     82%  197u
+003  robot-lab      READY      6%  184u
+004  paper-crane    READY      5%  106u
+005  old-agent      ZOMBIE     0%  170u
+
+context switches today: 20
+active processes:       5
+working-set pressure:   125% (active/limit, est.)  HIGH
+
+STATE: THRASHING
+
+THRASHING DETECTED
+
+20 project switches in 4 hours
+median uninterrupted session: 0 sec
+1 switch required stale-context reconstruction
+5 active working sets
+signals: switch rate, short sessions, working-set pressure
+
+The system is spending too much time restoring context.
+
+LOAD = share of recorded run-time, last 24h · CTX~ = estimated tokens in saved 
+image
+
+
+================ DEMO D: zombie ================
+$ thrash ps
+PID  NAME           STATE    PC                         
+001  game-alpha     RUNNING  rig jaw                    
+002  research-beta  READY    run baseline sweep         
+003  robot-lab      READY    calibration                
+004  paper-crane    READY    article draft              
+005  old-agent      ZOMBIE   implement writable calendar
+
+
+================ DEMO E: kill, core dump, resurrect ================
+old-agent: image aged by 1032h
+$ thrash kill old-agent --core
+SIGTERM -> old-agent
+
+Recovering final process state...
+████████████████████ 100%
+
+last useful state:
+  Calendar READ-ONLY integration works.
+
+unfinished:
+  writable calendar permission scope
+
+reason inferred from repository:
+  no repository activity for 41 days
+
+core dumped:
+graveyard/old-agent.core
+
+$ thrash ps --all
+PID  NAME           STATE       PC                         
+001  game-alpha     RUNNING     rig jaw                    
+002  research-beta  READY       run baseline sweep         
+003  robot-lab      READY       calibration                
+004  paper-crane    READY       article draft              
+005  old-agent      TERMINATED  implement writable calendar
+
+$ thrash resurrect old-agent
+Restoring terminated process...
+
+last known PC:
+  implement writable calendar
+
+age:
+  43 days
+
+repository drift:
+  MODERATE
+
+POSSIBLE DRIFT (MODERATE)  since core dump:
++ 1 new commit
+    calendar: write scope experiment
++ 1 relevant file changed
+    agent/calendar.py
+~ ASSUMPTION MAY BE STALE: writable calendar permission scope
+    evidence: agent/calendar.py
+    evidence: commit: calendar: write scope experiment
+
+Process 005 (old-agent) is READY.
+
+$ thrash top
+THRASH HUMAN KERNEL 0.1
+1 HUMAN CORE
+
+PID  PROCESS        STATE    LOAD  CTX~
+001  game-alpha     RUNNING   13%  205u
+002  research-beta  READY     77%  197u
+003  robot-lab      READY      6%  184u
+004  paper-crane    READY      4%  106u
+005  old-agent      READY      0%  170u
+
+context switches today: 20
+active processes:       5
+working-set pressure:   125% (active/limit, est.)  HIGH
+
+STATE: THRASHING
+
+THRASHING DETECTED
+
+20 project switches in 4 hours
+median uninterrupted session: 0 sec
+1 switch required stale-context reconstruction
+5 active working sets
+signals: switch rate, short sessions, working-set pressure
+
+The system is spending too much time restoring context.
+
+LOAD = share of recorded run-time, last 24h · CTX~ = estimated tokens in saved 
+image
+

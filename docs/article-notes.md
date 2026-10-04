@@ -13,7 +13,7 @@ See README. Key split: **deterministic code** does timestamps, counts, pressure,
 - Ollama `format` is given the JSON schema (structured outputs), and the reply is still validated with Pydantic. One repair attempt, then reject; the previous image survives.
 - Model-cited paths are checked against the real, non-ignored file list; invented ones are dropped and counted (`dropped_paths`). One demo run showed "2 invalid path(s) rejected" for a project.
 - Privacy: ignore rules and secret redaction are applied before text reaches the prompt. The prompt carries the alias, not the directory name.
-- JSON/JSONL storage with atomic replace; no database.
+- Registry, image, swap and core files use atomic replacement; the event log is append-only JSONL. Malformed/torn event lines are skipped. No database.
 
 ## Measured latency (initial extraction, 5 tiny synthetic repos, one laptop, local Ollama; single runs, not benchmarks)
 | Model | per-project extraction |
@@ -39,6 +39,15 @@ See README "Limitations". In short: only sees what is in files and commits; thre
 ## Honest scope notes
 - Commits were not as granular as planned for the first feature: the kernel (registry, images, switching, thrashing, privacy, CLI) went in as one commit.
 - Not built: shell integration, export formats, richer drift, animations.
+
+## Foundation audit follow-up
+- Added synthetic regressions for secrets in TODOs/commit subjects, ignored-file symlinks, linked ignore files, excluded roots, tracked/nested `.gitignore` rules, and public path masking.
+- File scanning prunes excluded/ignored directories and skips symlinks. Working-tree checks compare only allowed files against Git index metadata; they do not invoke `git status` to read sensitive tracked files indirectly.
+- Rescanning a paged-out project previously left an older swap image that restoration preferred. Restoration now chooses the newest valid copy.
+- Decisions without usable source paths are marked inferred, including older images loaded from disk.
+- LOAD sessions are clipped to the advertised 24-hour window. A session beginning before the window no longer inflates its share.
+- The first implementation's commit granularity remains a historical limitation; history was not rewritten to imply otherwise.
+- Follow-up offline verification ran demos A–E with a temporary local Gemma server in a Linux network namespace whose only interface was `lo`. All scenes completed without model errors. The laptop's Wi-Fi was left alone; describe this as network-isolated verification, not a physical Wi-Fi-off demonstration. See `foundation-verification.md`.
 
 ## Friend's feedback
 > **PLACEHOLDER: add real feedback here after she has tried it. Nothing in this repository claims a reaction.**

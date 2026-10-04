@@ -113,5 +113,6 @@ def build() -> None:
 
 if __name__ == "__main__":
     build()
-    (HERE / "env.sh").write_text(f'export THRASH_HOME="{HOME}"\n')
+    # env.sh is portable, checked-in tooling; rebuilding a demo must not replace
+    # it with a machine-specific absolute path.
     print(f"next: source {HERE / 'env.sh'}")
