@@ -311,5 +311,43 @@ def resurrect(core: str = typer.Argument(..., help="Alias in the graveyard, or p
     ui.console.print(f"\nProcess {proc.pid_str} ({ui.e(proc.alias)}) is READY.")
 
 
+@app.command()
+@guard
+def irq(text: str = typer.Argument(...),
+        route: bool = typer.Option(False, "--route", help="Ask local Gemma for advisory routing.")):
+    """Capture an interrupt without leaving the current project."""
+    from .interrupts import InterruptQueue
+    k = get_kernel()
+    queue = InterruptQueue(k.cfg)
+    current = k.reg.running()
+    item = queue.capture(ui.safe(text), k.clock(), current.alias if current else None)
+    k.tel.record("irq", k.clock(), irq_id=item.id, project=item.current)
+    ui.console.print(f"INTERRUPT REQUEST #{item.id} — queued. Current execution preserved.")
+    if route:
+        item = queue.route(item.id, [p.alias for p in k.reg.all()])
+        ui.console.print(f"Suggested route: {ui.e(item.route.kind)} {ui.e(item.route.project)}")
+        ui.console.print(ui.e(item.route.reason))
+
+
+@app.command()
+@guard
+def interrupts(ack: int = typer.Option(None, "--ack", help="Acknowledge an IRQ by ID."),
+               all_: bool = typer.Option(False, "--all")):
+    """Inspect pending interrupts; acknowledgment never creates a process."""
+    from .interrupts import InterruptQueue
+    queue = InterruptQueue(get_kernel().cfg)
+    if ack is not None:
+        try:
+            queue.acknowledge(ack)
+        except ValueError as exc:
+            raise KernelError(str(exc)) from exc
+    entries = [x for x in queue.read() if all_ or not x.acknowledged]
+    for item in entries:
+        ui.console.print(f"#{item.id} {'ACK' if item.acknowledged else 'PENDING'} "
+                         f"{ui.e(item.text)} · {ui.e(item.route.kind)} {ui.e(item.route.project)}")
+    if not entries:
+        ui.console.print("No pending interrupts.")
+
+
 if __name__ == "__main__":
     app()
