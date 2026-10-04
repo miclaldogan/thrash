@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from rich.text import Text
+from rich.text import Text, Span
 from textual import work
 from textual.message import Message
 from textual.binding import Binding
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import DataTable, Footer, Static, Input, Button, Label
+from textual.widgets import DataTable, Static, Input, Button, Label
 
 from . import ui
 from .diagnostics import diagnose
@@ -19,6 +19,7 @@ from .registry import State
 from .scheduler import CoreDump
 from .resume import build_resume_report
 from .visuals import VisualPressure
+from . import scope
 
 
 @dataclass
@@ -28,6 +29,8 @@ class Monitor:
     events: list
     images: dict
     now: float
+    capacity: int = 4
+    stale_hours: float = 24
 
 
 def monitor(kernel):
@@ -38,25 +41,15 @@ def monitor(kernel):
     for row in rows:
         row['core_saved'] = kernel.core_path(row['proc'].alias).is_file()
     return Monitor(rows, diagnose(kernel), kernel.tel.read(),
-                   {r['proc'].alias: kernel.load_context(r['proc']) for r in rows}, kernel.clock())
+                   {r['proc'].alias: kernel.load_context(r['proc']) for r in rows}, kernel.clock(), kernel.cfg.max_active, kernel.cfg.stale_hours)
 
 
 def memory_text(view):
-    text = Text('WORKING MEMORY MAP\nEstimated context units = serialized characters / 4, not RAM.\n\n', style='cyan')
+    """Printable page-map compatibility surface; WSS remains a separate estimate."""
+    text = scope.page_text(view)
+    text.append('\n\nSAVED IMAGE SIZE / characters ÷ 4, not allocation frames\n',style=scope.GRAPHITE)
     for row in view.rows:
-        p = row['proc']
-        if p.state == State.TERMINATED:
-            location = 'CORE' if row.get('core_saved') else 'RETIRED'
-        elif p.state == State.SLEEPING:
-            location = 'SWAP'
-        else:
-            location = 'RESIDENT'
-        units = row['ctx'] or 0
-        # Bar scale is fixed, labelled, and derived only from saved image units.
-        text.append(f'{p.alias:18} {location:8} {units:6} units  ', style='white')
-        text.append('█' * min(32, (units+99)//100), style='blue' if location == 'SWAP' else 'cyan')
-        text.append('\n')
-    text.append('\nEach block ≈ 100 context units; bars cap at 3,200.\n', style='dim')
+        text.append(f"{row['proc'].alias}: {row['ctx'] or 0} units\n",style=scope.BONE)
     return text
 
 
@@ -64,11 +57,16 @@ class ReportScreen(ModalScreen):
     BINDINGS = [('escape', 'close', 'Close'), ('q', 'close', 'Close')]
     def __init__(self, title, content):
         super().__init__()
-        self.heading, self.content = title, content
+        self.heading, self.content = title, content.copy()
+        self.content.style = scope.BONE
+        self.content.spans = [Span(span.start, span.end,
+            scope.RUST if 'yellow' in str(span.style) or 'red' in str(span.style) else
+            scope.GRAPHITE if 'dim' in str(span.style) else scope.BONE)
+            for span in self.content.spans]
 
     def compose(self) -> ComposeResult:
         with Vertical(id='report-dialog'):
-            yield Static(Text(self.heading, style='bold cyan'))
+            yield Static(Text(self.heading, style=scope.BONE))
             with VerticalScroll():
                 yield Static(self.content, markup=False)
             yield Button('Return to kernel [Esc]', id='close')
@@ -82,17 +80,18 @@ class ReportScreen(ModalScreen):
 
 class AskScreen(ModalScreen[str | None]):
     BINDINGS = [('escape', 'cancel', 'Cancel')]
-    def __init__(self, title, confirm=False):
+    def __init__(self, title, confirm=False, initial="", submit="Queue interrupt", placeholder="Capture the thought; keep your current execution."):
         super().__init__()
         self.heading, self.confirm = title, confirm
+        self.initial, self.submit, self.placeholder = initial, submit, placeholder
 
     def compose(self) -> ComposeResult:
         with Vertical(id='ask-dialog'):
             yield Label(Text(self.heading))
             if not self.confirm:
-                yield Input(placeholder='Capture the thought; keep your current execution.', id='answer')
+                yield Input(value=self.initial, placeholder=self.placeholder, id='answer')
             with Horizontal():
-                yield Button('Confirm' if self.confirm else 'Queue interrupt', id='accept', variant='primary')
+                yield Button('Confirm' if self.confirm else self.submit, id='accept')
                 yield Button('Cancel', id='cancel')
 
     def on_mount(self):
@@ -117,6 +116,133 @@ class AskScreen(ModalScreen[str | None]):
                 self.dismiss(value)
 
 
+class SchedulerCursor(DataTable):
+    """Use Textual's keyboard/scroll mechanics, with a single literal scheduler rail."""
+    def __init__(self, **kwargs):
+        super().__init__(cursor_type='row', show_header=False, show_row_labels=False,
+                         show_cursor=True, zebra_stripes=False, cell_padding=0, **kwargs)
+
+
+class FaultScreen(ReportScreen):
+    BINDINGS = [('escape', 'close', 'Return'), ('q', 'close', 'Return'),
+                ('space', 'advance', 'Reveal'), ('enter', 'resolve', 'Resolve')]
+    def __init__(self, title, content, report=None, reduced_motion=False):
+        super().__init__(title, content)
+        self.report = report
+        self.reduced_motion = reduced_motion
+        self.stage = 4 if reduced_motion else 0
+        self.error = None
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id='fault-shell'):
+            yield Static(Text('PAGE FAULT\n'+self.heading.removeprefix('PAGE FAULT · ')+(' / SYNTHETIC SCENARIO' if self.app.synthetic else ''),style=scope.BONE), id='fault-title')
+            yield Static('', id='fault-status', markup=False)
+            with VerticalScroll(id='fault-scroll'):
+                yield Static('', id='fault-stream', markup=False)
+            yield Static('', id='fault-next', markup=False)
+            yield Static('SPACE REVEAL   ENTER RESOLVE   ESC RETURN', id='fault-rail', markup=False)
+
+    def on_mount(self):
+        self.present()
+        self.set_interval(.65, self.advance_stage)
+
+    def load_report(self, report, content):
+        self.report, self.content = report, content
+        self.stage = 4 if self.reduced_motion else 0
+        if self.is_mounted: self.present()
+
+    def show_error(self, message):
+        self.error = ui.safe(message)
+        self.present()
+
+    def advance_stage(self):
+        if self.report and self.stage<4:
+            self.stage += 1
+            self.present()
+
+    def action_advance(self):
+        if self.report:
+            self.stage = 4
+            self.present()
+
+    def action_resolve(self):
+        if self.report and self.stage<4: self.action_advance()
+        else: self.dismiss()
+
+    def present(self):
+        if self.error:
+            status = 'RESTORATION INTERRUPTED'
+            text = Text(self.error,style=scope.RUST)
+        elif self.report is None:
+            status = 'locating process image… / kernel operation in progress'
+            text = Text('Saved context will appear when the kernel returns evidence.\nNo presentation progress is being counted as I/O.',style=scope.GRAPHITE)
+        else:
+            status = ('process image located / presenting saved state' if self.report.available
+                      else 'no process image recovered')
+            text = scope.restoration_text(self.report,min(self.stage,3)) if self.report.available else self.content
+            if self.report.available:
+                status += f' / confidence {self.report.confidence:.2f} (model)'
+            if self.report.snapshot_timestamp is not None:
+                status += ' / '+ui.fmt_age(max(0,self.app.kernel.clock()-self.report.snapshot_timestamp))+' old'
+        self.query_one('#fault-status',Static).update(Text(status,style=scope.GRAPHITE))
+        self.query_one('#fault-stream',Static).update(text)
+        if self.report and self.report.available and self.stage>=3:
+            next_text = Text('NEXT EXECUTION\n',style=scope.GRAPHITE)
+            next_text.append(ui.safe(self.report.next_action or 'Review saved evidence.'),style=scope.CYAN)
+            if self.report.drift_level != 'NONE':
+                next_text.append('\nReview changed evidence before executing the saved instruction.',style=scope.RUST)
+            next_text.append('\nFAULT RESOLVED · Enter returns to the kernel' if self.stage==4 else '\nSaved instruction / inspect changed evidence first',style=scope.GRAPHITE)
+            self.query_one('#fault-next',Static).update(next_text)
+        else: self.query_one('#fault-next',Static).update('')
+
+
+class PanicScreen(ModalScreen):
+    BINDINGS = [('s','suspend','Suspend'),('i','interrupts','Interrupts'),
+                ('c','continue','Continue'),('escape','continue','Continue'),('q','continue','Continue')]
+    def __init__(self, diagnostics):
+        super().__init__()
+        self.diagnostics = diagnostics
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id='panic-shell'):
+            yield Static('KERNEL PANIC'+('\nSYNTHETIC SCENARIO' if self.app.synthetic else ''),id='panic-title',markup=False)
+            yield Static('',id='panic-counts',markup=False)
+            yield Static('S SUSPEND    I INTERRUPTS    C CONTINUE',id='panic-rail',markup=False)
+
+    def on_mount(self):
+        self.update_counts(self.diagnostics)
+        if not self.app.reduced_motion:
+            self.add_class('panic-flash')
+            self.set_timer(.7,lambda:self.remove_class('panic-flash'))
+
+    def update_counts(self, d):
+        self.diagnostics = d
+        text = Text('coherent working set lost\nRECOVERY ADVISORY\n\n',style=scope.GRAPHITE,justify='center')
+        text.append(f'{d.report.active} runnable\n{d.report.switches} switches / {d.report.window_hours:g}h\n'
+                    f'{d.pending_irqs} interrupts\n{d.stale_images} stale images\n\n',style=scope.BONE)
+        text.append('scheduler is alive.\ncontext pressure is high.',style=scope.GRAPHITE)
+        self.query_one('#panic-counts',Static).update(text)
+
+    def action_continue(self):
+        self.app.panic_acknowledged = True
+        self.dismiss()
+
+    def action_interrupts(self):
+        app = self.app
+        app.panic_acknowledged = True
+        self.dismiss()
+        app.view_index = 1
+        app.action_view()
+
+    def action_suspend(self):
+        candidates = self.diagnostics.candidates
+        if not candidates:
+            return
+        self.app.push_screen(AskScreen('PAGE OUT / '+', '.join(candidates), initial=candidates[0],
+                                      submit='Page out', placeholder='READY alias to suspend'),
+                             lambda alias:self.app.start('suspend',alias) if alias else None)
+
+
 class KernelResult(Message):
     def __init__(self, view=None, irqs=None, result=None, message=None, error=None):
         super().__init__()
@@ -124,38 +250,64 @@ class KernelResult(Message):
 
 
 class KernelApp(App):
-    TITLE = 'THRASH · HUMAN KERNEL'
+    TITLE = 'HUMAN KERNEL / SCOPE'
+    ENABLE_COMMAND_PALETTE = False
     CSS = '''
-    Screen { background: #090f14; color: #d0dce0; }
-    #identity { height: 3; padding: 0 1; background: #14212b; color: #75dfda; }
-    #metrics { height: auto; min-height: 4; padding: 0 1; border-bottom: solid #28404d; }
-    #body { height: 1fr; }
-    #processes { width: 62%; height: 1fr; border: solid #28404d; }
-    #right { width: 38%; padding: 0 1; }
-    .compact #processes { width: 100%; }
-    .compact #right { display: none; }
-    #detail { height: auto; }
-    #history { height: auto; margin-top: 1; }
-    #memory-summary { height: auto; margin-top: 1; }
-    #view { height: 1fr; padding: 1 2; display: none; }
-    #echo { height: 2; color: #be9470; padding: 0 1; }
-    #notice { height: 2; background: #14212b; padding: 0 1; }
-    .pressure #metrics { border-bottom: solid #d0ab66; }
-    .thrashing #metrics { border-bottom: heavy #e79a58; }
-    .panic #metrics { border-bottom: heavy #f06b71; color: #f06b71; }
-    ModalScreen { align: center middle; background: #000000 65%; }
-    #report-dialog { width: 90%; height: 90%; padding: 1 2; background: #101d27; border: solid #75dfda; }
+    Screen { background: #090b0b; color: #ddd7c9; }
+    * { scrollbar-color: #515552; scrollbar-background: #090b0b; scrollbar-color-hover: #858580; scrollbar-color-active: #ddd7c9; }
+    #identity { height: 2; padding: 0 2; color: #858580; }
+    #metrics { height: auto; padding: 0 2; color: #858580; }
+    #body { height: 1fr; padding: 0 2; }
+    #dispatch, #frames, #core { height: auto; margin-top: 1; }
+    #processes { height: 6; background: #090b0b; border: none; padding-left: 4; }
+    #processes:focus { background-tint: #000000 0%; }
+    #processes > .datatable--cursor { background: #090b0b; color: #ddd7c9; text-style: none; }
+    #processes:focus > .datatable--cursor { background: #090b0b; color: #ddd7c9; text-style: none; }
+    #processes > .datatable--hover { background: #090b0b; }
+    #process-label { height: 2; margin-top: 1; color: #858580; }
+    #view { height: 1fr; padding: 1 6; display: none; }
+    #irq-rail { height: 1; padding: 0 2; color: #d2ac70; }
+    #echo { height: 1; padding: 0 2; color: #858580; }
+    #notice { height: 1; padding: 0 2; color: #858580; }
+    #command-rail { height: 1; padding: 0 2; color: #858580; }
+    .compact #identity { height: 1; }
+    .compact #metrics { height: 1; text-wrap: nowrap; text-overflow: ellipsis; }
+    .compact #dispatch, .compact #frames, .compact #core { margin-top: 0; }
+    .compact #process-label { height: 1; margin-top: 0; }
+    .compact #echo { display: none; }
+
+    ModalScreen { align: center middle; background: #000000 90%; }
+    #report-dialog { width: 94%; height: 94%; padding: 1 3; background: #090b0b; border: none; }
     #report-dialog VerticalScroll { height: 1fr; }
-    #ask-dialog { width: 76; height: auto; padding: 1 2; background: #101d27; border: solid #75dfda; }
-    #ask-dialog Label { height: auto; margin-bottom: 1; }
+    #ask-dialog { width: 80%; max-width: 90; height: auto; padding: 2 3; background: #090b0b; border-top: solid #d2ac70; border-bottom: solid #515552; }
+    #ask-dialog Label { height: auto; margin-bottom: 1; color: #d2ac70; }
     #ask-dialog Horizontal { height: 3; margin-top: 1; }
-    Button { margin-right: 1; }
+    Input { border: none; border-bottom: solid #515552; background: #090b0b; color: #ddd7c9; padding: 0; }
+    Input > .input--selection { background: #353931; color: #ddd7c9; }
+    Input:focus { border: none; border-bottom: solid #d2ac70; background: #090b0b; }
+    Button { border: none; background: #090b0b; color: #858580; margin-right: 3; min-width: 12; }
+    Button:hover { background: #1b1e1d; color: #ddd7c9; }
+    Button:focus { background: #1b1e1d; color: #ddd7c9; text-style: underline; }
+    FaultScreen { background: #000000; }
+    #fault-shell { width: 100%; height: 100%; padding: 1 5; background: #000000; }
+    #fault-title { height: 3; color: #ddd7c9; }
+    #fault-status { height: 2; color: #858580; }
+    #fault-scroll { height: 1fr; }
+    #fault-stream { height: auto; }
+    #fault-next { height: auto; max-height: 6; color: #90c7c5; margin-top: 1; }
+    #fault-rail { height: 1; color: #858580; }
+    PanicScreen { background: #090b0b; }
+    #panic-shell { width: 80%; height: auto; align: center middle; }
+    #panic-title { height: 3; text-align: center; color: #ddd7c9; text-style: bold; }
+    .panic-flash #panic-title { color: #e77870; }
+    #panic-counts { height: auto; text-align: center; }
+    #panic-rail { height: 3; text-align: center; margin-top: 2; color: #858580; }
     '''
     BINDINGS = [
         ('q', 'quit_safely', 'Quit'), ('i', 'irq', 'IRQ'), ('s', 'suspend', 'Suspend'),
         ('w', 'wake', 'Wake'), ('k', 'terminate', 'Core dump'), ('c', 'context', 'Context'),
         Binding('tab', 'view', 'View', priority=True), ('a', 'ack', 'Ack IRQ'), ('r', 'refresh_context', 'Rescan'),
-        ('m', 'motion', 'Motion'),
+        ('m', 'motion', 'Motion'), ('question_mark', 'help', 'Help'),
     ]
 
     def __init__(self, kernel, reduced_motion=None, demo=False):
@@ -171,33 +323,42 @@ class KernelApp(App):
         self.quit_pending = False
         self.aliases = []
         self.pending_irqs = []
+        self.fault_screen = None
+        self.panic_acknowledged = False
+        self.rebuild_stage = None
+        self._terminal_width = 80
+        self._terminal_height = 24
 
     def compose(self) -> ComposeResult:
-        yield Static('THRASH HUMAN KERNEL\n1 human. 1 core. Too many processes.', id='identity')
-        yield Static('Reading saved scheduler state…', id='metrics', markup=False)
-        with Horizontal(id='body'):
-            yield DataTable(id='processes', cursor_type='row', zebra_stripes=True)
-            with VerticalScroll(id='right'):
-                yield Static('', id='detail', markup=False)
-                yield Static('', id='history', markup=False)
-                yield Static('', id='memory-summary', markup=False)
+        yield Static('HUMAN KERNEL SCOPE / 01                                      THRASH', id='identity', markup=False)
+        yield Static('Reading scheduler state…', id='metrics', markup=False)
+        with VerticalScroll(id='body'):
+            yield Static('', id='dispatch', markup=False)
+            yield Static('', id='frames', markup=False)
+            yield Static('', id='core', markup=False)
+            yield Static('04   SCHEDULER CURSOR / ↑↓ select · Enter dispatch', id='process-label', markup=False)
+            yield SchedulerCursor(id='processes')
         with VerticalScroll(id='view'):
             yield Static('', id='alternate', markup=False)
+        yield Static('', id='irq-rail', markup=False)
         yield Static('', id='echo', markup=False)
-        yield Static('Enter restore · ↑↓ select · C inspect · Tab memory / interrupts', id='notice', markup=False)
-        yield Footer()
+        yield Static('', id='notice', markup=False)
+        yield Static('TAB VIEW   I INTERRUPT   S SUSPEND   K TERM   ? HELP', id='command-rail', markup=False)
 
     def on_mount(self):
-        self.query_one(DataTable).add_columns('PID', 'ALIAS', 'STATE', 'WSS≈', 'FAULTS', 'AGE')
-        self.query_one(DataTable).focus()
+        self.query_one(DataTable).add_column('scheduler', key='scheduler')
+        self.query_one(DataTable).focus(scroll_visible=False)
         if self.synthetic:
-            self.query_one('#identity', Static).update('THRASH · SYNTHETIC DEMO — simulated history & model fixture\n1 human. 1 core. Too many processes.')
+            self.query_one('#identity', Static).update('HUMAN KERNEL SCOPE / 01 · SYNTHETIC HISTORY & IMAGES          THRASH')
         self.refresh_monitor()
         self.set_interval(3, self.refresh_monitor)
-        self.set_interval(.8, self.animate_pressure)
+        self.set_interval(.5, self.animate_pressure)
 
-    def on_resize(self):
-        self.screen_stack[0].set_class(self.size.width < 100, 'compact')
+    def on_resize(self, event):
+        self._terminal_width = event.size.width
+        self._terminal_height = event.size.height
+        if self.view and self.is_mounted:
+            self.call_after_refresh(self.render_scope)
 
     def selected(self):
         table = self.query_one(DataTable)
@@ -207,7 +368,7 @@ class KernelApp(App):
         self.query_one('#notice', Static).update(Text(ui.safe(message)))
 
     def refresh_monitor(self):
-        if not self.busy and not isinstance(self.screen, ModalScreen):
+        if not self.busy and (not isinstance(self.screen, ModalScreen) or isinstance(self.screen, PanicScreen)):
             self.start('refresh')
 
     def start(self, action, alias=None, text=None):
@@ -228,6 +389,9 @@ class KernelApp(App):
                       'kill':'Recovering final state and writing core dump…', 'irq':'Queuing interrupt…',
                       'ack':'Acknowledging interrupt…', 'demo':'Advancing explicitly synthetic scenario…'}
             self.notice(labels[action])
+        if action in ('switch', 'wake'):
+            self.fault_screen = FaultScreen('PAGE FAULT · ' + alias, Text(), reduced_motion=self.reduced_motion)
+            self.push_screen(self.fault_screen)
         self.perform(action, alias, text)
 
     @work(thread=True, exit_on_error=False)
@@ -239,10 +403,13 @@ class KernelApp(App):
             k.reg.load()
             if action == 'demo':
                 result, message = self.demo_controller.advance()
+                if result and result[0].startswith('PAGE FAULT'):
+                    restored = k.restore(k.reg.running(), reconstruct=False)
+                    result = (*result, restored.resume)
             elif action == 'switch':
                 switched = k.switch(alias)
                 report = switched.restore
-                result = ('PAGE FAULT · ' + alias, self.restore_content(report))
+                result = ('PAGE FAULT · ' + alias, self.restore_content(report), report.resume)
                 message = 'Working set restored. Read NEXT INSTRUCTION before dispatching another process.'
                 if switched.out and switched.out.error:
                     message = 'Outgoing snapshot unavailable; previous image retained. ' + switched.out.error
@@ -257,7 +424,7 @@ class KernelApp(App):
             elif action in ('context', 'wake'):
                 report = k.wake(alias) if action == 'wake' else k.restore(k.reg.resolve(alias, True), reconstruct=False)
                 result = ('PAGE FAULT · ' + alias if action == 'wake' else 'SAVED CONTEXT · ' + alias,
-                          self.restore_content(report))
+                          self.restore_content(report), report.resume if action == 'wake' else None)
             elif action == 'rescan':
                 snap = k.snapshot(k.reg.resolve(alias), force=True)
                 if snap.error:
@@ -305,54 +472,52 @@ class KernelApp(App):
     def failed(self, message):
         self.busy = False
         self.notice('Operation failed: ' + message)
+        if self.fault_screen and self.fault_screen.is_mounted:
+            self.fault_screen.show_error(message)
         self.finish_pending()
 
     def finished(self, view, irqs, result, message):
         selected = self.selected()
+        previous_mode = self.view.diagnostics.mode if self.view else None
         self.view, self.irqs = view, irqs
         d = view.diagnostics
-        self.screen_stack[0].remove_class('pressure', 'thrashing', 'panic')
-        self.screen_stack[0].add_class(d.mode.lower())
-        self.query_one('#metrics', Static).update(Text(
-            f'STATE: {d.mode}   ACTIVE {d.report.active}/{self.kernel.cfg.max_active}   '
-            f'PRESSURE {d.report.pressure:.0%}   SWITCHES {d.report.switches}/{self.kernel.cfg.window_hours:g}h\n'
-            f'IRQ {d.pending_irqs}   STALE {d.stale_images}   SIGNALS: {", ".join(d.reasons) or "none"}\n'
-            + ('KERNEL PANIC · suspend READY work [S], review IRQs [Tab], or continue deliberately.' if d.mode == 'PANIC'
-               else 'OUT OF MIND · suspend a candidate before admitting work, or queue an IRQ.' if d.out_of_mind
-               else 'Only THRASH sessions are measured. WSS is an estimate, not human memory capacity.')))
+        if previous_mode == 'PANIC' and d.mode != 'PANIC' and not self.reduced_motion:
+            self.rebuild_stage = 0
         table = self.query_one(DataTable)
         table.clear()
-        self.aliases = []
+        self.aliases = [r['proc'].alias for r in view.rows]
         for row in view.rows:
-            p = row['proc']
-            self.aliases.append(p.alias)
-            cf = view.images[p.alias]
-            faults = sum(e.get('type') == 'switch' and e.get('to_project') == p.alias and e.get('reconstructed', False)
-                         for e in view.events)
-            state = 'STARVED' if d.starved.get(p.alias) and d.starved[p.alias].starved else row['state'].value
-            table.add_row(p.pid_str, Text(p.alias), state, str(row['ctx'] or '—'), str(faults),
-                          ui.fmt_age(view.now-cf.image.meta.created_at) if cf else 'missing', key=p.alias)
+            alias = row['proc'].alias
+            table.add_row(scope.scheduler_line(view, row, alias == selected), key=alias)
+        table.styles.height = max(2, min(6, len(view.rows)))
         if selected in self.aliases:
             table.move_cursor(row=self.aliases.index(selected))
         self.update_detail()
         self.update_alternate()
-        history = Text('DISPATCH HISTORY\n', style='bold cyan')
-        for e in [e for e in view.events if e.get('type') == 'switch'][-6:]:
-            history.append(ui.safe(f"{e.get('from_project') or 'idle'} → {e.get('to_project')}\n"), style='dim')
-        self.query_one('#history', Static).update(history)
-        resident = sum(r['ctx'] or 0 for r in view.rows if r['proc'].state in (State.RUNNING, State.READY))
-        swapped = sum(r['ctx'] or 0 for r in view.rows if r['proc'].state == State.SLEEPING)
-        memory = Text('WORKING MEMORY\n', style='bold cyan')
-        memory.append(f'RESIDENT ≈{resident}u\nSWAP ≈{swapped}u\n', style='white')
-        memory.append('Saved context size, not RAM.\nTab opens the memory map.', style='dim')
-        self.query_one('#memory-summary', Static).update(memory)
+        self.render_scope()
+        if d.mode != 'PANIC':
+            self.panic_acknowledged = False
+            if isinstance(self.screen, PanicScreen):
+                self.screen.dismiss()
+        elif isinstance(self.screen, PanicScreen):
+            self.screen.update_counts(d)
         self.busy = False
         if message:
             self.notice(message)
             if '→ SWAP' in message:
-                self.swap_effect = (selected, 4)
+                self.swap_effect = (message.split(' → SWAP',1)[0], 4)
         if result and not self.quit_pending:
-            self.push_screen(ReportScreen(*result))
+            if len(result)>2 and result[2] is not None:
+                if self.fault_screen and self.fault_screen.is_mounted:
+                    self.fault_screen.load_report(result[2], result[1])
+                else:
+                    self.fault_screen = FaultScreen(result[0], result[1], result[2], self.reduced_motion)
+                    self.push_screen(self.fault_screen)
+            else:
+                self.push_screen(ReportScreen(*result[:2]))
+        elif d.mode == 'PANIC' and not self.panic_acknowledged and not isinstance(self.screen, ModalScreen):
+            self.visual.tick('PANIC', self.reduced_motion)
+            self.push_screen(PanicScreen(d))
         self.finish_pending()
 
     def finish_pending(self):
@@ -370,40 +535,59 @@ class KernelApp(App):
             self.start('switch', alias)
 
     def update_detail(self):
-        if not self.view or not (alias := self.selected()):
+        if not self.view:
             return
-        row = next(r for r in self.view.rows if r['proc'].alias == alias)
-        cf = self.view.images[alias]
-        text = Text(alias+'\n', style='bold cyan')
-        if cf:
-            text.append('\nSAVED NEXT INSTRUCTION\n', style='bold')
-            if self.view.now-cf.image.meta.created_at >= self.kernel.cfg.stale_hours*3600:
-                text.append('MAY BE STALE · C checks drift\n', style='yellow')
-            text.append(ui.safe(cf.image.next_action or cf.image.program_counter.task)+'\n', style='white')
-            text.append(f'\n{len(cf.image.completed)} completed · {len(cf.image.decisions)} decisions\n'
-                        f'{len(cf.image.unresolved)} unresolved · {len(cf.image.blockers)} blockers\n', style='dim')
-        else:
-            text.append('No saved context. R rebuilds with local Gemma.\n')
-        wait = self.view.diagnostics.starved.get(alias)
-        if wait and wait.starved:
-            text.append(f'\nSTARVATION\nREADY {wait.waiting_hours:.0f}h; {wait.other_dispatches} other dispatches; '
-                        f'{wait.execution_seconds:.0f}s execution.\n', style='yellow')
-        if row['state'] == State.ZOMBIE:
-            text.append(f"\nZOMBIE\n{row['inactive_days']:.0f} days idle; {row['residue']} saved unfinished references.\n"
-                        'No activity and unfinished residue. Close deliberately or resume.\n', style='red')
-        text.append('\nC: full restoration report\nR: refresh semantic evidence\n', style='dim')
-        self.query_one('#detail', Static).update(text)
+        selected = self.selected()
+        table = self.query_one(DataTable)
+        for row in self.view.rows:
+            alias = row['proc'].alias
+            if alias in self.aliases:
+                table.update_cell(alias, 'scheduler', scope.scheduler_line(self.view, row, alias == selected))
+        self.query_one('#core', Static).update(scope.core_text(self.view, selected, self.compact, max(30,min(self.size.width,self._terminal_width)-8)))
+        if selected:
+            wait = self.view.diagnostics.starved.get(selected)
+            if wait and wait.starved:
+                self.notice(f'STARVED / {selected} · READY {wait.waiting_hours:.0f}h · {wait.other_dispatches} other dispatches · {wait.execution_seconds:.0f}s run')
+            row = next((r for r in self.view.rows if r['proc'].alias==selected),None)
+            if row and row['state']==State.ZOMBIE:
+                self.notice(f"ZOMBIE / {selected} · {row['inactive_days']:.0f}d idle · {row['residue']} unfinished references")
+
+    @property
+    def compact(self):
+        return min(self.size.width,self._terminal_width) < 100 or min(self.size.height,self._terminal_height) < 32
+
+    def render_scope(self):
+        if not self.view:
+            return
+        view, d = self.view, self.view.diagnostics
+        self.screen_stack[0].set_class(self.compact, 'compact')
+        width = max(30, min(self.size.width,self._terminal_width)-8)
+        motion = not self.reduced_motion and d.mode != 'NORMAL'
+        phase = self.visual.phase
+        self.query_one('#metrics', Static).update(Text(
+            f'{d.mode} / {d.report.active} runnable · {d.report.pressure:.0%} allocation · '
+            f'{d.report.switches} dispatches · {d.stale_images} stale',
+            style=scope.RED if d.mode in ('THRASHING','PANIC') else scope.GRAPHITE))
+        self.query_one('#dispatch', Static).update(scope.dispatch_text(view, width, phase, motion, self.compact))
+        self.query_one('#frames', Static).update(scope.page_text(view, width, phase, motion, self.swap_effect, self.compact))
+        self.query_one('#core', Static).update(scope.core_text(view, self.selected(), self.compact, width))
+        self.query_one('#irq-rail', Static).update(scope.irq_text(getattr(self,'irqs',[]), phase, motion))
+        if self.rebuild_stage is not None:
+            if self.rebuild_stage < 1:
+                self.query_one('#frames',Static).update(Text('02   REBUILDING SCOPE / allocation confirmed',style=scope.GRAPHITE))
+            if self.rebuild_stage < 2:
+                self.query_one('#core',Static).update(Text('03   REBUILDING SCOPE / execution state retained',style=scope.GRAPHITE))
 
     def update_alternate(self):
         if not self.view:
             return
         if self.view_index == 1:
-            content = memory_text(self.view)
+            content = scope.page_text(self.view, max(40,self.size.width-14), migration=self.swap_effect)
         else:
-            content = Text('INTERRUPT QUEUE\nA acknowledges the oldest pending IRQ. No project is created automatically.\n\n', style='cyan')
+            content = Text('INTERRUPT QUEUE\nA acknowledges the oldest pending IRQ. No project is created automatically.\n\n', style=scope.BONE)
             for item in self.irqs:
                 if not item.acknowledged:
-                    content.append(ui.safe(f'#{item.id}  {item.text}\n  route: {item.route.kind} {item.route.project}\n'), style='white')
+                    content.append(ui.safe(f'#{item.id}  {item.text}\n  route: {item.route.kind} {item.route.project}\n'), style=scope.BONE)
             if not any(not i.acknowledged for i in self.irqs):
                 content.append('No pending interrupts.\n')
         self.query_one('#alternate', Static).update(content)
@@ -411,30 +595,29 @@ class KernelApp(App):
     def animate_pressure(self):
         if not self.view:
             return
-        mode = self.view.diagnostics.mode
-        level = self.visual.tick(mode, self.reduced_motion)
-        offset = self.visual.offset(self.reduced_motion)
-        history = [e.get('to_project', '') for e in self.view.events if e.get('type') == 'switch'][-4:]
-        text = Text()
-        if level and history:
-            text.append(' '*offset + 'DISPATCH ECHO (visual)  ' + ui.safe('   '.join(history)),
-                        style=('red' if level == 3 else 'yellow' if level == 2 else 'dim'))
-            if level >= 2:
-                text.append('\n' + ' '*(3-offset) + 'STALE FRAME  ' + ui.safe(history[-1])
-                            + '   · context overhead is competing with execution', style='dim')
-        else:
-            text.append('Memory stable.' if mode == 'NORMAL' else 'Working-set pressure rising.', style='dim')
+        d = self.view.diagnostics
+        if self.rebuild_stage is not None:
+            self.rebuild_stage += 1
+            if self.rebuild_stage >= 3: self.rebuild_stage = None
+        level = self.visual.tick(d.mode, self.reduced_motion)
+        self.render_scope()
+        scar = ''
+        if level > {'NORMAL':0,'PRESSURE':1,'THRASHING':2,'PANIC':3}[d.mode]:
+            scar = 'RECONSTITUTING FRAME · residual dispatch echo settling'
+        elif d.stale_images and d.mode != 'NORMAL' and (self.reduced_motion or self.visual.phase%2==0):
+            stale = [r['proc'].alias for r in self.view.rows if r['proc'].state in (State.READY,State.RUNNING)
+                     and (not self.view.images[r['proc'].alias] or self.view.now-self.view.images[r['proc'].alias].image.meta.created_at >= self.kernel.cfg.stale_hours*3600)]
+            scar = 'STALE IMAGE TRACE / ' + ' · '.join(stale[:3])
+        if 'context reconstruction' in d.report.fired and not self.reduced_motion and self.visual.phase%2:
+            restored = [e.get('to_project') for e in self.view.events if e.get('type')=='switch' and e.get('reconstructed')
+                        and self.view.now-d.report.window_hours*3600 <= e['ts'] <= self.view.now]
+            scar = 'RESTORE ECHO / ' + ' ← '.join(restored[-3:])
         if self.swap_effect:
-            alias, ticks = self.swap_effect
-            text = Text(ui.safe(f'PAGED {alias}  RESIDENT ' + '─'*(5-ticks) + '→ SWAP'), style='cyan')
-            self.swap_effect = (alias, ticks-1) if ticks > 1 and not self.reduced_motion else None
-        self.query_one('#echo', Static).update(text)
-        if self.view_index == 1:
-            memory = memory_text(self.view)
-            if level:
-                memory.append('\nVISUAL REDRAW TRACE  ' + ' '*offset + '░▒' * level +
-                              '  (display effect; units above remain authoritative)', style='dim')
-            self.query_one('#alternate', Static).update(memory)
+            alias,ticks = self.swap_effect
+            scar = f'PAGE OUT / {alias} crossed the swap horizon · saved context retained'
+            self.swap_effect = (alias,ticks-1) if ticks>1 and not self.reduced_motion else None
+            if self.view_index==1: self.update_alternate()
+        self.query_one('#echo', Static).update(Text(ui.safe(scar),style=scope.GRAPHITE))
 
     def action_view(self):
         if isinstance(self.screen, ModalScreen):
@@ -445,9 +628,13 @@ class KernelApp(App):
         self.query_one('#view').display = self.view_index != 0
         self.update_alternate()
         if self.view_index == 0:
-            self.query_one(DataTable).focus()
+            self.query_one(DataTable).focus(scroll_visible=False)
         else:
             self.query_one('#view').focus()
+
+    def action_help(self):
+        content = Text('↑↓ SELECT   ENTER DISPATCH\nC READ CONTEXT   R RECONSTRUCT\nI CAPTURE IRQ   S PAGE OUT   W WAKE\nK TERMINATE + CORE   TAB SCOPE / PAGES / IRQ\nA ACK OLDEST IRQ (IRQ view)   M REDUCED MOTION\nQ EXIT   ESC RETURN\n\nTrace: fixed time cells. × means multiple dispatches.\n↑ IRQ   ! reconstruction   ◆ both\nScar: actual dispatches from 48–24 hours ago.\n16 page frames = one scheduler allocation unit, not RAM.\nWSS ctx units estimate saved-image characters / 4.\nCyan marks execution; amber marks interrupts; red marks contention.\n\nIn the synthetic demo, N advances the scenario.', style=scope.BONE)
+        self.push_screen(ReportScreen('KERNEL KEYMAP', content))
 
     def action_motion(self):
         self.reduced_motion = not self.reduced_motion
