@@ -113,6 +113,9 @@ def _get_client():
 def span(name, **values):
     """Yield a numeric metric bag; SDK failures cannot affect kernel behavior."""
     bag = metrics(values)
+    if name == "thrash.page_fault":
+        bag.update({"gen_ai.operation.name": "invoke_agent",
+                    "gen_ai.agent.name": "THRASH semantic restoration"})
     parent_trace = _current.get()
     client = None
     if parent_trace is None:

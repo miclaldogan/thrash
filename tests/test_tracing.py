@@ -122,3 +122,50 @@ def test_optional_sdk_missing_or_invalid(monkeypatch):
     monkeypatch.setattr(t,'_client',None)
     assert t._get_client() is None
     with t.span('thrash.page_fault'):pass
+
+
+def test_ollama_safe_counts_not_payload(client,cfg):
+    import httpx
+    from thrash.ollama_client import chat_json
+    def respond(request):
+        assert request.url.host=='127.0.0.1'
+        return httpx.Response(200,json={'message':{'content':'PRIVATE completion'},
+            'prompt_eval_count':42,'eval_count':11,'load_duration':1000000,'eval_duration':2000000})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        with t.span('thrash.page_fault'):
+            reply=chat_json(cfg,'PRIVATE prompt',[{'role':'user','content':'PRIVATE source'}],client=http)
+    assert reply.text=='PRIVATE completion' and reply.input_tokens==42
+    payload=json.dumps(events(client))
+    assert 'PRIVATE' not in payload
+    model=events(client)[0]['spans'][0]['data']
+    assert model['model_load_ms']==1 and model['generation_ms']==2
+    assert 'prompt_eval_ms' not in model
+
+
+def test_absent_sdk_is_noop(monkeypatch):
+    import builtins
+    original=builtins.__import__
+    def imports(name,*a,**kw):
+        if name=='sentry_sdk':raise ImportError('optional dependency missing')
+        return original(name,*a,**kw)
+    monkeypatch.setattr(builtins,'__import__',imports)
+    monkeypatch.setenv('THRASH_SENTRY','1');monkeypatch.setenv('SENTRY_DSN','https://public@example.invalid/1')
+    monkeypatch.setattr(t,'_client',None)
+    with t.span('thrash.page_fault'):pass
+    assert t._client is None
+
+
+def test_disabled_kernel_and_local_model_make_no_external_connections(monkeypatch,kernel3,cfg):
+    import httpx
+    from thrash.ollama_client import chat_json
+    monkeypatch.delenv('THRASH_SENTRY',raising=False)
+    monkeypatch.setenv('SENTRY_DSN','https://public@example.invalid/1')
+    def forbidden(*a,**kw):raise AssertionError('external network attempted')
+    monkeypatch.setattr(socket.socket,'connect',forbidden)
+    monkeypatch.setattr(sdk,'Client',forbidden)
+    assert kernel3.restore(kernel3.reg.resolve('alpha')).resume.available
+    def local(request):
+        assert request.url.host in ('127.0.0.1','::1')
+        return httpx.Response(200,json={'message':{'content':'{}'}})
+    with httpx.Client(transport=httpx.MockTransport(local)) as http:
+        assert chat_json(cfg,'system',[],client=http).text=='{}'
