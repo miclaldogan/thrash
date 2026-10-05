@@ -105,3 +105,26 @@ Two focused community sources informed implementation hygiene, not the art direc
 
 - [Terminal themes tuned for prose legibility](https://dev.to/palo_alto_ai/terminal-themes-tuned-for-prose-legibility-not-syntax-highlighting-g7e), by [palo_alto_ai](https://dev.to/palo_alto_ai), tags `cli`, `design`, `showdev`, `tooling`: distinguish subdued decorative marks from text that must remain readable. THRASH uses its own bone/graphite/semantic palette and tests essential-text contrast.
 - [The Textual bracket-markup failure](https://dev.to/nazarii-ahapevych/typecname-crashed-my-textual-tui-why-escaping-user-text-isnt-enough-3gp0), by [Nazarii Ahapevych](https://dev.to/nazarii-ahapevych), tags `python`, `tui`, `terminal`, `debugging`: retain literal Text renderables for repository/model/IRQ strings. Existing bracket-input tests remain green.
+
+
+## Release palette and typeface
+
+Recommended demo font: **Fira Code**. It is a capture preference, never a bundled runtime dependency. Final public media is in [the release gallery](submission-assets.md).
+
+| Role | Color | Meaning |
+|---|---|---|
+| Background | `#090b0b` | Near black; PAGE FAULT uses black |
+| Body | `#ddd7c9` | Warm bone |
+| Secondary | `#858580` | Graphite; sleeping/swap also stay neutral |
+| Historical scar | `#515552` | Faint, supplemental history |
+| Execution | `#90c7c5` | Current core, cursor identity, endpoint, current frames and next action |
+| Decision | `#c5a373` | Preserved human intent |
+| Reason | `#b29876` | Dim warm decision explanation |
+| IRQ | `#d9b56e` | Interrupt arrival and pending ideas |
+| Drift | `#c68b68` | Rust; stale instructions and changed evidence |
+| Blocker / thrashing | `#e77870` | Signal red, localized; PANIC flashes then returns to bone |
+| Zombie | `#a49386` | Desaturated warm residue |
+
+Only the executing project receives the cyan identity/frame accent; projects do not have individual brand colors. NOW is bone in a stable kernel, red in THRASHING/PANIC, with a cyan current endpoint. IRQ markers are gold, reconstruction markers rust, and the scar/echo remain dim. Color supplements labels and symbols. The main semantic text colors pass a 4.5:1 contrast check; the faint scar is deliberately supplemental.
+
+The scheduler's foreground-priority setting preserves semantic colors under keyboard selection. IRQ inputs have no default background tint and buttons have no inherited bold style. A caret, focus underline and flat form controls remain for usability. PANIC retains its sparse layout and unchanged recovery controls.

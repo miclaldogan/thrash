@@ -33,7 +33,7 @@ For **real inference**, `demo/run_demo.sh` uses Gemma on synthetic Git repos. Th
 .venv/bin/python scripts/capture/run.py
 ```
 
-Requires local `rsvg-convert`, `ffmpeg`, fontconfig and the normal development dependencies. Recommended demo font: Iosevka Term. The capture script references an installed font family, falls back to monospace, and never copies font files. Terminal profile: 120 columns × 40 rows, near-black background, Iosevka Term regular, no terminal chrome. SVGs use local fonts only; PNGs/GIFs preserve the measured glyph layout without requiring readers to install a font.
+Requires local `rsvg-convert`, `ffmpeg`, fontconfig and the normal development dependencies. Recommended demo font: Fira Code. The capture script references an installed font family, falls back to monospace, and never copies font files. Terminal profile: 120 columns × 40 rows, near-black background, Fira Code regular, no terminal chrome. SVGs use local fonts only; PNGs/GIFs preserve the measured glyph layout without requiring readers to install a font.
 
 Public assets are rendered from actual Textual states and actual kernel operations against temporary, hand-authored fixtures. The script advances DemoClock: 71-hour staleness, yesterday's scar, rapid switches and the recovery quiet window are simulated. GIF hold times are presentation edits, **not measured inference latency**. The recovery animation includes a four-hour quiet-window advance; suspension alone does not erase historical switches. IRQ capture asserts that the RUNNING project did not change.
 

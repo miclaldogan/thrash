@@ -1,6 +1,6 @@
 # Sentry: observability without project contents
 
-**Implementation and local SDK envelope capture are verified. Hosted ingestion and the actual Sentry dashboard screenshot are pending a configured DSN and project access.** Nothing in the media folder is presented as proof of backend receipt. No telemetry was uploaded during this phase.
+**Implementation and local SDK envelope capture are verified. Hosted verification was not performed: no DSN/project access was available at the release gate. This does not block release.** Nothing in the media folder is presented as proof of backend receipt. No telemetry was uploaded during this phase.
 
 THRASH traces my friend's context switches. Sentry traces THRASH's.
 
@@ -43,7 +43,7 @@ Source code, notes, README text, Git diffs/subjects, prompts, completions, absol
 
 ## Real debugging finding
 
-The first measured restoration took 80.397 s. The `thrash.gemma.resume` span accounted for 80.315 s, over 99.8% of that duration. Ollama reported:
+In the preserved Prompt 4 before-run, the first measured restoration took 80.397 s. The `thrash.gemma.resume` span accounted for 80.315 s, over 99.8% of that duration. Ollama reported:
 
 | First call component | Measured duration |
 |---|---:|
@@ -54,11 +54,11 @@ The first measured restoration took 80.397 s. The `thrash.gemma.resume` span acc
 
 This local trace ruled out context gathering and rendering as the source of the long wait. It also prevented a misleading conclusion that every return requires eighty seconds: the next seven fresh inferences were 5.328–6.467 s, while the median saved-image restoration was 1.982 ms and had no Gemma span. These are observations on this machine, not latency guarantees. The first call was against a newly started isolated server; the large prompt-evaluation cost cannot be attributed further from this evidence alone.
 
-The schema span exposed a second useful finding: `schema_valid=true` coexisted with `decision_count=0` in every scenario. Comparing those counts with the synthetic ground truth revealed the decision-extraction failure documented in [Gemma evaluation](gemma-eval.md). A valid schema is not a complete memory. No bug or retry was fabricated; all sixteen measured extractions were schema-valid without repair.
+In that before-run, the schema span exposed a second useful finding: `schema_valid=true` coexisted with `decision_count=0` in every scenario. Comparing those counts with the synthetic ground truth revealed the decision-extraction failure documented in [Gemma evaluation](gemma-eval.md). A valid schema is not a complete memory. No bug or retry was fabricated; both original eight-scenario runs were schema-valid without repair. The release investigation subsequently improved decision extraction; see the before/after evaluation.
 
 ## Actual pipeline timings
 
-The exact trace data is in [results.json](eval/results.json). Nested durations overlap; **do not add parent snapshot time to its children**. The main first-call stages are listed below; the final values are reproduced from the captured envelopes.
+The exact trace data is in [Prompt 4 before-run](eval/prompt4-results.json). Nested durations overlap; **do not add parent snapshot time to its children**. The main first-call stages are listed below; the final values are reproduced from the captured envelopes.
 
 | Stage | Fresh image, ms | Saved image, ms |
 |---|---:|---:|

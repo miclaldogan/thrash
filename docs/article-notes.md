@@ -88,7 +88,7 @@ No streak, focus score, deadline list, reward loop or automatic priority ranking
 
 ## Prompt 4 evidence and public-data provenance
 
-Public demos use simulated project histories and anonymized aliases. THRASH was additionally verified against real local projects in read-only mode, but those contents were never committed or used in public assets. Recommended demo font: Iosevka Term; local font files are not distributed. Hero screenshots omit fixture labels; their provenance is explicit here, in README and in the demo script.
+Public demos use simulated project histories and anonymized aliases. THRASH was additionally verified against real local projects in read-only mode, but those contents were never committed or used in public assets. Recommended demo font: Fira Code; local font files are not distributed. Hero screenshots omit fixture labels; their provenance is explicit here, in README and in the demo script.
 
 Lead with `docs/media/page-fault.gif` and `docs/media/02-page-fault.png`. Those are hand-authored process images, not evidence of model accuracy. Use [Gemma evaluation](gemma-eval.md) for the actual model scores and failure examples, and [Sentry notes](sentry-notes.md) for the measured latency breakdown. Do not call the local envelope preview a hosted Sentry screenshot. Hosted verification remains pending access.
 
@@ -101,3 +101,14 @@ Challenge 78, [Hacktoberfest Weekend: Build for a Friend](https://dev.to/events/
 ### Observability research
 
 [Nainik Mehta, LLM Observability: Trace Cost, Sampling & Privacy](https://dev.to/nainikmehta/llm-observability-trace-cost-sampling-privacy-7gp) argues for structured counts and filtering before persistence. Comments add that an empty dashboard may mean dropped telemetry, not health. THRASH therefore distinguishes local envelope capture from confirmed backend receipt and captures no prompt excerpts or hashes. [DevOps Daily's trace-context discussion](https://dev.to/devopsdaily/your-trace-dies-the-moment-the-pipeline-shells-out-5g7a) highlights inherited baggage as a trust boundary; THRASH uses a private SDK scope and rebuilds outgoing events. No comments were present on that second article. SDK behavior was checked against official Sentry documentation, not copied from community examples.
+
+
+## Prompt 5 release evidence
+
+The frozen Gemma corpus now recovers all seven recorded decisions and all six reasons. Six choices have valid source paths and explicit labels; one lacks a source and remains labeled inferred. Task keyword coverage is 7/8 (the missed term is a faithful paraphrase), next-action/completed coverage 8/8 each. Two unsupported summary assertions remain. Do not claim perfect accuracy or zero hallucinations.
+
+Retrieval and privacy filtering preserved the decision evidence. The fix was generic prompt/schema grounding. An extractive-summary trial was rejected because completion coverage fell to 4/8 and a question again became a decision. All runs, including that rejection, remain public. This is development-set regression evidence, not a held-out benchmark.
+
+The final media uses Fira Code, with cyan current execution, warm decision intent, gold IRQs, rust drift and localized red blockers/thrashing. PAGE FAULT remains the hero GIF; THRASHING is the strongest static image; PANIC is secondary. The [release gate](release-gate.md) includes clean installation, offline/no-Sentry operation, real local Gemma, the demo and privacy checks. Hosted Sentry verification was not performed and is not a release blocker. Nothing has been pushed or submitted.
+
+Research check: [Erik Hill, Distinguishing wrong from absent](https://dev.to/agentdev9/distinguishing-wrong-from-absent-57ep) and Mike Czerwinski's comment distinguish transport failures from semantic failures. THRASH reports schema/transport success separately from field coverage and unsupported claims. [Ji AI's field-order discussion](https://dev.to/ji_ai/why-json-schema-field-order-breaks-structured-output-accuracy-2985) suggested another hypothesis, but field order was not changed or claimed as the cause here; no comments were present. The implemented schema-in-prompt grounding follows official Ollama guidance linked in the evaluation.

@@ -2,15 +2,23 @@
 
 **She didn’t need another planner. She needed a kernel.**
 
+THRASH is a local human-process scheduler for returning to unfinished projects. PAGE FAULT restores what finished, what you decided and why, where you stopped, what changed, and the next action. Open-weight Gemma reconstructs that meaning locally from files and commits; Python measures switching and pressure. THRASH saves execution context across switches rather than organizing a task list. Project contents stay on your machine.
+
 ![PAGE FAULT: returning to the exact stopping point](docs/media/page-fault.gif)
 
 `1 human. 1 core. Too many processes.`
 
 ## The human bug
 
-My friend has too many tabs open. Not browser tabs. Mental ones.
+My friend has more processes than cores.
 
-A game, a paper, a prototype, a half-written explanation. The hard part is returning: what worked, why that decision was made, where the experiment stopped, and what to do next. A task list can remember “work on the game.” It rarely remembers enough to make that instruction useful.
+She doesn't procrastinate. That's the annoying part. She is always doing something.
+
+I considered building her a planner. She already has three. One of them contains a task called “organize task manager.” So that seemed unwise.
+
+Then I realized I'd seen this failure before. Not in a person. In Operating Systems class.
+
+She didn't need another planner. She needed a kernel.
 
 ## I had seen this failure before
 
@@ -31,17 +39,17 @@ thrash demo             # isolated TUI; N advances nine scenes, Q exits
 thrash demo --script    # print the same nine scenes; no model required
 ```
 
-This mode uses **synthetic repositories, hand-authored images and simulated time** in a temporary directory. Its banner says so. It never loads your registry or scans your projects, and cleans up on exit. The scenario moves from a clean kernel through PAGE FAULT, IRQ, thrashing, starvation, zombie residue, OUT OF MIND and PANIC to recovery.
+This mode uses **synthetic repositories, hand-authored images and simulated time** in a temporary directory. The script transcript labels this provenance; hero screens omit watermarks. It never loads your registry or scans your projects, and cleans up on exit. The scenario moves from a clean kernel through PAGE FAULT, IRQ, thrashing, starvation, zombie residue, OUT OF MIND and PANIC to recovery.
 
 For actual local-model extraction on synthetic Git repositories, use `demo/run_demo.sh` with Ollama running. See [the nine-scene demo script](docs/demo-script.md), [verification](docs/prompt2-verification.md), and [the original network-isolated run](docs/foundation-verification.md). Simulated ages and histories are documented here and in the demo script; hero screens omit test-harness labels.
 
-![Human kernel scope: dispatch trace, resident frames and swap horizon](docs/media/01-normal.png)
+![THRASHING: dispatch collisions, current execution and resident frames](docs/media/04-thrashing.png)
 
 [Final media gallery](docs/submission-assets.md) · [PAGE FAULT](docs/media/02-page-fault.png) · [Sparse PANIC](docs/media/06-kernel-panic.png) · [Actual Gemma report](docs/examples/resume-gemma.txt)
 
 Public demos use simulated project histories and anonymized aliases. THRASH was additionally verified against real local projects in read-only mode, but those contents were never committed or used in public assets.
 
-Recommended demo font: **Iosevka Term**. Any ordinary monospace terminal font works; no font is bundled.
+Recommended demo font: **Fira Code**. Any ordinary monospace terminal font works; no font is bundled.
 
 [Final media gallery and reproducible captures](docs/submission-assets.md)
 
@@ -232,7 +240,7 @@ Optional manual traces separate image loading, context collection, privacy filte
 
 Install the optional extra with `pip install -e ".[sentry]"`, configure `SENTRY_DSN` privately, then explicitly set `THRASH_SENTRY=1`. With the flag unset/zero, a missing DSN, or no SDK installed, normal local behavior remains unchanged.
 
-[Tracing privacy model, real findings and capture status](docs/sentry-notes.md). The current committed trace preview comes from real SDK envelopes captured offline; hosted Sentry verification is pending project access.
+[Tracing privacy model, real findings and capture status](docs/sentry-notes.md). The current committed trace preview comes from real SDK envelopes captured offline; hosted Sentry verification was not performed because project access was unavailable; it is not required for local use.
 
 ## Why local/open-weight AI
 
