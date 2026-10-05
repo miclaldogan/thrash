@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="758" viewBox="0 0 1320 758">
+<rect width="100%" height="100%" fill="#090b0b"/>
+<g font-family="Iosevka Term, monospace" font-size="23" fill="#ddd7c9">
+<text x="45" y="55">PAGE FAULT / SENTRY ENVELOPE</text>
+<text x="45" y="91" fill="#858580">Local transport capture · measured durations · not a hosted dashboard</text>
+<text x="45" y="150">FIRST RESTORATION</text>
+<text x="625" y="150" text-anchor="end" fill="#858580">80396.303 ms</text>
+<rect x="690.00" y="134" width="540.00" height="13" fill="#858580"/>
+<text x="65" y="187">thrash.process_image.load</text>
+<text x="625" y="187" text-anchor="end" fill="#858580">0.044 ms</text>
+<rect x="690.00" y="171" width="2.00" height="13" fill="#858580"/>
+<text x="65" y="224">thrash.process.snapshot</text>
+<text x="625" y="224" text-anchor="end" fill="#858580">80395.597 ms</text>
+<rect x="690.00" y="208" width="540.00" height="13" fill="#858580"/>
+<text x="85" y="261">thrash.process_image.load</text>
+<text x="625" y="261" text-anchor="end" fill="#858580">0.023 ms</text>
+<rect x="690.00" y="245" width="2.00" height="13" fill="#858580"/>
+<text x="85" y="298">thrash.context.collect</text>
+<text x="625" y="298" text-anchor="end" fill="#858580">6.494 ms</text>
+<rect x="690.00" y="282" width="2.00" height="13" fill="#858580"/>
+<text x="85" y="335">thrash.privacy.filter</text>
+<text x="625" y="335" text-anchor="end" fill="#858580">2.335 ms</text>
+<rect x="690.33" y="319" width="2.00" height="13" fill="#858580"/>
+<text x="85" y="372">thrash.gemma.resume</text>
+<text x="625" y="372" text-anchor="end" fill="#90c7c5">80314.961 ms</text>
+<rect x="690.54" y="356" width="539.45" height="13" fill="#90c7c5"/>
+<text x="85" y="409">thrash.schema.validate</text>
+<text x="625" y="409" text-anchor="end" fill="#858580">0.079 ms</text>
+<rect x="1229.99" y="393" width="2.00" height="13" fill="#858580"/>
+<text x="65" y="446">thrash.process_image.load</text>
+<text x="625" y="446" text-anchor="end" fill="#858580">0.264 ms</text>
+<rect x="1230.00" y="430" width="2.00" height="13" fill="#858580"/>
+<text x="65" y="483">thrash.restore.render</text>
+<text x="625" y="483" text-anchor="end" fill="#858580">0.131 ms</text>
+<rect x="1230.00" y="467" width="2.00" height="13" fill="#858580"/>
+<text x="45" y="520">SAVED IMAGE / NO INFERENCE</text>
+<text x="625" y="520" text-anchor="end" fill="#858580">1.765 ms</text>
+<rect x="690.00" y="504" width="2.00" height="13" fill="#858580"/>
+<text x="65" y="557">thrash.process_image.load</text>
+<text x="625" y="557" text-anchor="end" fill="#858580">0.124 ms</text>
+<rect x="690.00" y="541" width="2.00" height="13" fill="#858580"/>
+<text x="65" y="594">thrash.drift.detect</text>
+<text x="625" y="594" text-anchor="end" fill="#858580">1.098 ms</text>
+<rect x="690.00" y="578" width="2.00" height="13" fill="#858580"/>
+<text x="65" y="631">thrash.restore.render</text>
+<text x="625" y="631" text-anchor="end" fill="#858580">0.043 ms</text>
+<rect x="690.01" y="615" width="2.00" height="13" fill="#858580"/>
+<text x="45" y="713" fill="#858580">No prompts. No completions. No project identities. SDK payloads captured offline.</text>
+</g></svg>

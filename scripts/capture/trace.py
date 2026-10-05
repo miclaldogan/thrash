@@ -11,10 +11,14 @@ def render(source,destination):
     cached=data['results'][0]['cached_traces'][0]
     rows=[]
     for event,title in ((fresh,'FIRST RESTORATION'),(cached,'SAVED IMAGE / NO INFERENCE')):
-        rows.append((title,event['timestamp']-event['start_timestamp'],0,True))
+        rows.append((title,event['timestamp']-event['start_timestamp'],0,0))
+        parents={s['span_id']:s['parent_span_id'] for s in event['spans']}
         for span in sorted(event['spans'],key=lambda s:s['start_timestamp']):
+            depth=1;parent=span['parent_span_id'];seen=set()
+            while parent in parents and parent not in seen:
+                seen.add(parent);depth+=1;parent=parents[parent]
             rows.append((span['description'],span['data'].get('duration_ms',0)/1000,
-                         max(0,span['start_timestamp']-event['start_timestamp']),False))
+                         max(0,span['start_timestamp']-event['start_timestamp']),depth))
     family,_=font();width=1320;height=240+len(rows)*37
     out=[f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
          '<rect width="100%" height="100%" fill="#090b0b"/>',
@@ -22,9 +26,9 @@ def render(source,destination):
          '<text x="45" y="55">PAGE FAULT / SENTRY ENVELOPE</text>',
          '<text x="45" y="91" fill="#858580">Local transport capture · measured durations · not a hosted dashboard</text>']
     scale=540/(fresh['timestamp']-fresh['start_timestamp'])
-    for i,(name,seconds,offset,root) in enumerate(rows):
+    for i,(name,seconds,offset,depth) in enumerate(rows):
         y=150+i*37;color='#90c7c5' if 'gemma' in name else '#858580'
-        out.append(f'<text x="{45 if root else 65}" y="{y}">{html.escape(name)}</text>')
+        out.append(f'<text x="{45+depth*20}" y="{y}">{html.escape(name)}</text>')
         out.append(f'<text x="625" y="{y}" text-anchor="end" fill="{color}">{seconds*1000:.3f} ms</text>')
         out.append(f'<rect x="{690+offset*scale:.2f}" y="{y-16}" width="{max(2,seconds*scale):.2f}" height="13" fill="{color}"/>')
     out += [f'<text x="45" y="{height-45}" fill="#858580">No prompts. No completions. No project identities. SDK payloads captured offline.</text>','</g></svg>']

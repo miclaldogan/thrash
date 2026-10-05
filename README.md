@@ -2,6 +2,8 @@
 
 **She didn’t need another planner. She needed a kernel.**
 
+![PAGE FAULT: returning to the exact stopping point](docs/media/page-fault.gif)
+
 `1 human. 1 core. Too many processes.`
 
 ## The human bug
@@ -31,11 +33,17 @@ thrash demo --script    # print the same nine scenes; no model required
 
 This mode uses **synthetic repositories, hand-authored images and simulated time** in a temporary directory. Its banner says so. It never loads your registry or scans your projects, and cleans up on exit. The scenario moves from a clean kernel through PAGE FAULT, IRQ, thrashing, starvation, zombie residue, OUT OF MIND and PANIC to recovery.
 
-For actual local-model extraction on synthetic Git repositories, use `demo/run_demo.sh` with Ollama running. See [the nine-scene demo script](docs/demo-script.md), [verification](docs/prompt2-verification.md), and [the original network-isolated run](docs/foundation-verification.md). Simulated ages are always labeled.
+For actual local-model extraction on synthetic Git repositories, use `demo/run_demo.sh` with Ollama running. See [the nine-scene demo script](docs/demo-script.md), [verification](docs/prompt2-verification.md), and [the original network-isolated run](docs/foundation-verification.md). Simulated ages and histories are documented here and in the demo script; hero screens omit test-harness labels.
 
-![Human kernel scope: dispatch trace, resident frames and swap horizon](docs/examples/scope/04-thrashing.svg)
+![Human kernel scope: dispatch trace, resident frames and swap horizon](docs/media/01-normal.png)
 
-[Visual identity / all nine states](docs/visual-identity.md) · [PAGE FAULT](docs/examples/scope/02-page-fault.svg) · [Sparse PANIC](docs/examples/scope/05-kernel-panic.svg) · [Actual Gemma report](docs/examples/resume-gemma.txt)
+[Final media gallery](docs/submission-assets.md) · [PAGE FAULT](docs/media/02-page-fault.png) · [Sparse PANIC](docs/media/06-kernel-panic.png) · [Actual Gemma report](docs/examples/resume-gemma.txt)
+
+Public demos use simulated project histories and anonymized aliases. THRASH was additionally verified against real local projects in read-only mode, but those contents were never committed or used in public assets.
+
+Recommended demo font: **Iosevka Term**. Any ordinary monospace terminal font works; no font is bundled.
+
+[Final media gallery and reproducible captures](docs/submission-assets.md)
 
 ## Page faults: the point of the product
 
@@ -79,6 +87,20 @@ NEXT INSTRUCTION
 ```
 
 The report contains saved knowledge plus deterministic drift evidence. It does not quietly rewrite the next instruction when the repository changes. Review the drift or explicitly refresh.
+
+## Interrupts
+
+An idea does not need to become a new project. Queue an IRQ while the current process stays RUNNING.
+
+![Capture an interrupt without switching projects](docs/media/irq.gif)
+
+## Thrashing and recovery
+
+Dispatch density and page churn follow actual scheduler signals. Suspending releases resident allocations; switch pressure subsides only after its configured quiet window. The time advance in this demo is simulated.
+
+![Recorded dispatches produce thrashing](docs/media/thrashing.gif)
+
+![Suspend to swap and recover](docs/media/swap-recovery.gif)
 
 ## A human kernel scope
 
@@ -188,7 +210,9 @@ If the destination has never been scanned, the page fault reconstructs its conte
 
 Drift is deterministic. It lists commits and files changed since the snapshot, and flags a saved *open* assumption ("undecided", "unresolved", "not started"...) as `ASSUMPTION MAY BE STALE` only when new commit subjects or changed paths share vocabulary with it, always with the evidence attached. It never claims a contradiction.
 
-## What Gemma actually does
+## Why Gemma
+
+The scheduler is ordinary Python. The part that remembers why you were there is Gemma. There is no generic chat interface: the model reconstructs a semantic process image for resuming work.
 
 Gemma, through Ollama, turns repository text into a structured process image: summary, completed work, decisions and reasons, program counter, registers, stack, unresolved questions, blockers, next action, last useful state and evidence. It can also suggest an IRQ destination when explicitly requested.
 
@@ -198,9 +222,21 @@ Gemma, through Ollama, turns repository text into a structured process image: su
 
 Gemma is **not** responsible for timestamps, switch counts, pressure, file discovery, or Git diffs. All of that is plain deterministic code.
 
+The [eight-scenario real Gemma evaluation](docs/gemma-eval.md) reports field coverage, omissions, unsupported claims and measured timings. Schema validity is not semantic accuracy. Hero GIFs use hand-authored fixtures; they are not claimed as these model outputs.
+
+## Why Sentry
+
+THRASH traces my friend’s context switches. Sentry traces THRASH’s.
+
+Optional manual traces separate image loading, context collection, privacy filtering, local Gemma inference, schema validation, drift detection and canonical report construction. Sentry receives allowlisted counts, timings and fixed categories only. No project text, aliases, paths, prompts or completions are attached.
+
+Install the optional extra with `pip install -e ".[sentry]"`, configure `SENTRY_DSN` privately, then explicitly set `THRASH_SENTRY=1`. With the flag unset/zero, a missing DSN, or no SDK installed, normal local behavior remains unchanged.
+
+[Tracing privacy model, real findings and capture status](docs/sentry-notes.md). The current committed trace preview comes from real SDK envelopes captured offline; hosted Sentry verification is pending project access.
+
 ## Why local/open-weight AI
 
-THRASH reads the contents of unreleased, private projects. That context should not leave the machine. It runs on a local Gemma through Ollama: no API keys, no cloud inference, no outbound analytics. Its scheduler event log stays local. In a test run, every `connect()` made during a real switch targeted `127.0.0.1:11434` / `::1:11434` and nothing else. If Ollama is down, deterministic commands (`top`, `ps`, `status`, state changes) keep working and extraction reports `LOCAL MODEL UNAVAILABLE`.
+THRASH reads the contents of unreleased, private projects. That context should not leave the machine. It runs on a local Gemma through Ollama: no inference API keys, no cloud inference, and no outbound telemetry by default. Optional Sentry tracing is explicitly opt-in. Its scheduler event log stays local. In a test run, every `connect()` made during a real switch targeted `127.0.0.1:11434` / `::1:11434` and nothing else. If Ollama is down, deterministic commands (`top`, `ps`, `status`, state changes) keep working and extraction reports `LOCAL MODEL UNAVAILABLE`.
 
 The synthetic demo also passed with both THRASH and a temporary Ollama server inside a network namespace with only loopback available. This verifies operation without an external network interface, with model weights already installed. See [verification notes](docs/foundation-verification.md).
 
@@ -212,6 +248,7 @@ The synthetic demo also passed with both THRASH and a temporary Ollama server in
 - **Excluded roots.** `THRASH_EXCLUDE_ROOTS` is an OS-path-separator-delimited list of absolute directory roots. Exclusions are checked before filesystem inspection or discovery descent. Registration rejects excluded or linked roots.
 - **Redaction.** Secret-looking assignments (`api_key = ...`, `password: ...`, known token shapes, private-key blocks) are masked in document bodies, TODO samples, commit subjects, assembled prompts and terminal text. Pattern matching is not a guarantee that every possible secret can be recognized; use ignore rules for sensitive material.
 - **Local transport.** Ollama endpoints must be literal loopback addresses or `localhost`; environment proxies and cloud model names are rejected/disabled. The Ollama server itself must also be configured to use local models.
+- **Optional telemetry.** Sentry is disabled by default. Even when enabled, automatic integrations, error capture, logs, sessions, ambient scopes and content capture are disabled; a final payload allowlist removes SDK-added context.
 - **No surveillance.** No keystrokes, no browser history, no global process scanning. THRASH logs only what THRASH itself does (`events.jsonl`).
 
 Limit: prose may contain private identities other than the registered directory name. Aliases cannot identify arbitrary personal/company names automatically. Real-project verification stays private; public examples and screenshots use only synthetic repositories.
@@ -310,7 +347,7 @@ No calendar, deadlines, streaks, rewards, focus score, automatic task prioritiza
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,sentry]"
 pytest -q
 ```
 

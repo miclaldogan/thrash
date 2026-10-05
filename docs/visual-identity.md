@@ -1,5 +1,7 @@
 # THRASH / human kernel scope
 
+Final submission media supersedes the historical specimens below: [Prompt 4 gallery](submission-assets.md).
+
 Prompt 3 changes presentation, not the product model. The scheduler, thresholds, registry, privacy boundaries, extraction and canonical resume schema are unchanged.
 
 ## Removed

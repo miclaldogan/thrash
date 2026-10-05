@@ -60,7 +60,7 @@ See README "Limitations". In short: only sees what is in files and commits; thre
 4. **The reveal.** “She didn’t need another planner. She needed a kernel.” Show the useful PAGE FAULT before showing any glitch effect.
 5. **Actual state.** Completed work, the reason behind a decision, the stopping point, changed files, unresolved work and one concrete next step. Point to evidence and honest blanks.
 6. **A thought interrupts.** Capture an IRQ while preserving the running process. It is not another project until explicitly admitted.
-7. **The screen tells the truth.** Visual echoes derive from recorded switching and pressure. Synthetic demonstration history stays labeled.
+7. **The screen tells the truth.** Visual echoes derive from recorded switching and pressure. Simulated demonstration history is disclosed in the documentation.
 8. **Starvation and residue.** A long READY wait is insufficient without other dispatches. A zombie needs inactivity plus unfinished residue. Neither is a judgment about the person.
 9. **Admission and recovery.** OUT OF MIND asks for a deliberate choice. PANIC has four gates and keeps recovery controls available. Suspending preserves context.
 10. **Local AI.** Gemma reconstructs semantic state; code owns times, counts, diffs and thresholds. No cloud inference.
@@ -84,3 +84,20 @@ No streak, focus score, deadline list, reward loop or automatic priority ranking
 - László Szabó (`lezli01`), [The Terminal Should Show the Work, Not Own It](https://dev.to/lezli01/the-terminal-should-show-the-work-not-own-it-ihk), plus its durable-state discussion: keep CLI and TUI as clients of saved state. THRASH retains the existing local kernel rather than adding a daemon.
 - Nazarii Ahapevych, [Textual markup failure](https://dev.to/nazarii-ahapevych/typecname-crashed-my-textual-tui-why-escaping-user-text-isnt-enough-3gp0): dynamic content is rendered as literal Rich Text, with a bracket-shaped input regression test.
 - Official [Textual workers](https://textual.textualize.io/guide/workers/) and [testing](https://textual.textualize.io/guide/testing/) documentation informed worker messages and headless keyboard tests.
+
+
+## Prompt 4 evidence and public-data provenance
+
+Public demos use simulated project histories and anonymized aliases. THRASH was additionally verified against real local projects in read-only mode, but those contents were never committed or used in public assets. Recommended demo font: Iosevka Term; local font files are not distributed. Hero screenshots omit fixture labels; their provenance is explicit here, in README and in the demo script.
+
+Lead with `docs/media/page-fault.gif` and `docs/media/02-page-fault.png`. Those are hand-authored process images, not evidence of model accuracy. Use [Gemma evaluation](gemma-eval.md) for the actual model scores and failure examples, and [Sentry notes](sentry-notes.md) for the measured latency breakdown. Do not call the local envelope preview a hosted Sentry screenshot. Hosted verification remains pending access.
+
+The scheduler is ordinary Python. The part that remembers why you were there is Gemma.
+
+THRASH traces my friend's context switches. Sentry traces THRASH's.
+
+Challenge 78, [Hacktoberfest Weekend: Build for a Friend](https://dev.to/events/78), runs October 2 at 02:00 UTC to October 5 at 06:59 UTC, 2026. The public rules list Best Use of Gemma and Best Use of Sentry Agent Tracing; writing quality carries the highest weight. Required tag: `hf26challenge`. The entry must explain the real intended recipient, why open/local matters, link code and demo, and use the announcement's submission template. No entry has been published by this work. Friend feedback remains the honest placeholder above.
+
+### Observability research
+
+[Nainik Mehta, LLM Observability: Trace Cost, Sampling & Privacy](https://dev.to/nainikmehta/llm-observability-trace-cost-sampling-privacy-7gp) argues for structured counts and filtering before persistence. Comments add that an empty dashboard may mean dropped telemetry, not health. THRASH therefore distinguishes local envelope capture from confirmed backend receipt and captures no prompt excerpts or hashes. [DevOps Daily's trace-context discussion](https://dev.to/devopsdaily/your-trace-dies-the-moment-the-pipeline-shells-out-5g7a) highlights inherited baggage as a trust boundary; THRASH uses a private SDK scope and rebuilds outgoing events. No comments were present on that second article. SDK behavior was checked against official Sentry documentation, not copied from community examples.

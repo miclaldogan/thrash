@@ -1,6 +1,6 @@
 # Nine scenes: a human kernel
 
-Run `thrash demo`. Every frame is labeled SYNTHETIC. Press N for the next scene; close reports with Esc. Run `thrash demo --script` for a deterministic transcript. No model or real project is used by this scenario. Temporary state is removed on normal exit.
+Run `thrash demo`. Public screenshots use anonymized simulated projects. Hero screens intentionally omit test-harness labels; this document records their provenance. Real-project verification was performed locally in read-only mode and was never committed. Press N for the next scene; close reports with Esc. Run `thrash demo --script` for a deterministic transcript. No model or real project is used by this scenario. Temporary state is removed on normal exit.
 
 1. **Clean kernel.** Three READY processes; NORMAL. Show the table and the saved next instruction. Tab opens the working memory map.
 2. **PAGE FAULT.** N switches to game-alpha after 71 simulated hours. Read completed work, the rig decision and its recorded reason, the stopping point, changed notes, unresolved turn test and the next instruction. This is the product demonstration; give it time.
@@ -25,3 +25,16 @@ The useful return is the reveal. PANIC is the second shot, not the opening pitch
 - Best recovery comparison: scene 9’s memory map after paging work to SWAP.
 
 For **real inference**, `demo/run_demo.sh` uses Gemma on synthetic Git repos. That is a separate verification path; do not describe fixture-mode results as live model output. See `prompt2-verification.md` for the actual new-schema run.
+
+
+## Reproducible submission captures
+
+```sh
+.venv/bin/python scripts/capture/run.py
+```
+
+Requires local `rsvg-convert`, `ffmpeg`, fontconfig and the normal development dependencies. Recommended demo font: Iosevka Term. The capture script references an installed font family, falls back to monospace, and never copies font files. Terminal profile: 120 columns × 40 rows, near-black background, Iosevka Term regular, no terminal chrome. SVGs use local fonts only; PNGs/GIFs preserve the measured glyph layout without requiring readers to install a font.
+
+Public assets are rendered from actual Textual states and actual kernel operations against temporary, hand-authored fixtures. The script advances DemoClock: 71-hour staleness, yesterday's scar, rapid switches and the recovery quiet window are simulated. GIF hold times are presentation edits, **not measured inference latency**. The recovery animation includes a four-hour quiet-window advance; suspension alone does not erase historical switches. IRQ capture asserts that the RUNNING project did not change.
+
+The four GIFs isolate restoration, interrupt capture, thrashing and recovery. The script also generates seven numbered screenshot pairs (SVG/PNG). Real inference results live separately in `docs/eval/`, with their ground truth in `scripts/eval/scenarios.json`.
