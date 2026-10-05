@@ -115,7 +115,7 @@ def test_semantic_text_palette_is_legible():
         c=[v/12.92 if v<=.04045 else ((v+.055)/1.055)**2.4 for v in channels]
         return sum(v*w for v,w in zip(c,(.2126,.7152,.0722)))
     bg=luminance(scope.BACKGROUND)
-    for color in (scope.BONE,scope.GRAPHITE,scope.CYAN,scope.AMBER,scope.RUST,scope.RED):
+    for color in (scope.BONE,scope.GRAPHITE,scope.CYAN,scope.AMBER,scope.DECISION,scope.DECISION_DIM,scope.ZOMBIE,scope.RUST,scope.RED):
         assert (luminance(color)+.05)/(bg+.05)>=4.5
 
 
@@ -186,3 +186,31 @@ async def test_unavailable_fault_never_claims_resolution(kernel3):
         assert 'offline' in text
         assert '/home/person' not in text
         assert 'FAULT RESOLVED' not in text
+
+
+def _color_at(text,fragment):
+    from rich.console import Console
+    return text.get_style_at_offset(Console(),text.plain.index(fragment)).color.triplet.hex
+
+
+def test_color_follows_execution_not_project_branding(kernel3):
+    k=kernel3;k.switch('alpha');view=monitor(k)
+    assert _color_at(scope.page_text(view),'AAAA')==scope.CYAN
+    assert _color_at(scope.page_text(view),'BBBB')==scope.BONE
+    assert _color_at(scope.dispatch_text(view),'▶')==scope.CYAN
+    k.switch('beta');view=monitor(k)
+    assert _color_at(scope.page_text(view),'AAAA')==scope.BONE
+    assert _color_at(scope.page_text(view),'BBBB')==scope.CYAN
+    k.suspend('alpha');view=monitor(k)
+    assert _color_at(scope.page_text(view),'AAAA')==scope.GRAPHITE
+
+
+def test_restore_color_distinguishes_intent_blocker_and_execution(kernel3):
+    report=build_resume_report('alpha',kernel3.load_context(kernel3.reg.resolve('alpha')).image)
+    report.decisions[0].reason='Preserve a recorded constraint'
+    report.blockers=['Pending evidence']
+    text=scope.restoration_text(report)
+    assert _color_at(text,'YOU DECIDED')==scope.DECISION
+    assert _color_at(text,'  why:')==scope.DECISION_DIM
+    assert _color_at(text,'BLOCKER')==scope.RED
+    assert _color_at(text,'NEXT EXECUTION')==scope.CYAN

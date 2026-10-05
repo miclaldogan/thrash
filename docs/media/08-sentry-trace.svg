@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="758" viewBox="0 0 1320 758">
 <rect width="100%" height="100%" fill="#090b0b"/>
-<g font-family="Iosevka Term, monospace" font-size="23" fill="#ddd7c9">
+<g font-family="Fira Code, monospace" font-size="23" fill="#ddd7c9">
 <text x="45" y="55">PAGE FAULT / SENTRY ENVELOPE</text>
 <text x="45" y="91" fill="#858580">Local transport capture · measured durations · not a hosted dashboard</text>
 <text x="45" y="150">FIRST RESTORATION</text>

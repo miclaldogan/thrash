@@ -120,7 +120,7 @@ class SchedulerCursor(DataTable):
     """Use Textual's keyboard/scroll mechanics, with a single literal scheduler rail."""
     def __init__(self, **kwargs):
         super().__init__(cursor_type='row', show_header=False, show_row_labels=False,
-                         show_cursor=True, zebra_stripes=False, cell_padding=0, **kwargs)
+                         show_cursor=True, cursor_foreground_priority="renderable", zebra_stripes=False, cell_padding=0, **kwargs)
 
 
 class FaultScreen(ReportScreen):
@@ -188,7 +188,7 @@ class FaultScreen(ReportScreen):
         self.query_one('#fault-status',Static).update(Text(status,style=scope.GRAPHITE))
         self.query_one('#fault-stream',Static).update(text)
         if self.report and self.report.available and self.stage>=3:
-            next_text = Text('NEXT EXECUTION\n',style=scope.GRAPHITE)
+            next_text = Text('NEXT EXECUTION\n',style=scope.CYAN)
             next_text.append(ui.safe(self.report.next_action or 'Review saved evidence.'),style=scope.CYAN)
             if self.report.drift_level != 'NONE':
                 next_text.append('\nReview changed evidence before executing the saved instruction.',style=scope.RUST)
@@ -267,7 +267,7 @@ class KernelApp(App):
     #processes > .datatable--hover { background: #090b0b; }
     #process-label { height: 2; margin-top: 1; color: #858580; }
     #view { height: 1fr; padding: 1 6; display: none; }
-    #irq-rail { height: 1; padding: 0 2; color: #d2ac70; }
+    #irq-rail { height: 1; padding: 0 2; color: #d9b56e; }
     #echo { height: 1; padding: 0 2; color: #858580; }
     #notice { height: 1; padding: 0 2; color: #858580; }
     #command-rail { height: 1; padding: 0 2; color: #858580; }
@@ -280,13 +280,13 @@ class KernelApp(App):
     ModalScreen { align: center middle; background: #000000 90%; }
     #report-dialog { width: 94%; height: 94%; padding: 1 3; background: #090b0b; border: none; }
     #report-dialog VerticalScroll { height: 1fr; }
-    #ask-dialog { width: 80%; max-width: 90; height: auto; padding: 2 3; background: #090b0b; border-top: solid #d2ac70; border-bottom: solid #515552; }
-    #ask-dialog Label { height: auto; margin-bottom: 1; color: #d2ac70; }
+    #ask-dialog { width: 80%; max-width: 90; height: auto; padding: 2 3; background: #090b0b; border-top: solid #d9b56e; border-bottom: solid #515552; }
+    #ask-dialog Label { height: auto; margin-bottom: 1; color: #d9b56e; }
     #ask-dialog Horizontal { height: 3; margin-top: 1; }
-    Input { border: none; border-bottom: solid #515552; background: #090b0b; color: #ddd7c9; padding: 0; }
+    Input { background-tint: #000000 0%; border: none; border-bottom: solid #515552; background: #090b0b; color: #ddd7c9; padding: 0; }
     Input > .input--selection { background: #353931; color: #ddd7c9; }
-    Input:focus { border: none; border-bottom: solid #d2ac70; background: #090b0b; }
-    Button { border: none; background: #090b0b; color: #858580; margin-right: 3; min-width: 12; }
+    Input:focus { border: none; border-bottom: solid #d9b56e; background: #090b0b; }
+    Button { text-style: none; border: none; background: #090b0b; color: #858580; margin-right: 3; min-width: 12; }
     Button:hover { background: #1b1e1d; color: #ddd7c9; }
     Button:focus { background: #1b1e1d; color: #ddd7c9; text-style: underline; }
     FaultScreen { background: #000000; }
@@ -350,8 +350,8 @@ class KernelApp(App):
         self.query_one(DataTable).add_column('scheduler', key='scheduler')
         self.query_one(DataTable).focus(scroll_visible=False)
         self.refresh_monitor()
-        self.set_interval(3, self.refresh_monitor)
-        self.set_interval(.5, self.animate_pressure)
+        self.monitor_timer = self.set_interval(3, self.refresh_monitor)
+        self.pressure_timer = self.set_interval(.5, self.animate_pressure)
 
     def on_resize(self, event):
         self._terminal_width = event.size.width

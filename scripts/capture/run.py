@@ -27,6 +27,9 @@ async def capture(destination):
         app=KernelApp(k,demo=True,reduced_motion=True)
         async with app.run_test(size=(120,40)) as pilot:
             await settle(app,pilot)
+            # The capture explicitly drives refresh/animation, preventing timer races
+            # with synchronous SVG/PNG rendering. Kernel operations remain real.
+            app.monitor_timer.pause();app.pressure_timer.pause()
             screenshot(app,destination,'01-normal');screenshot(app,destination,'07-scheduler-scar')
             # The selected scheduler cursor is game-alpha; dispatch the same selection.
             fault=[(svg(app),1)]

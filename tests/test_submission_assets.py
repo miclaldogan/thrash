@@ -12,7 +12,7 @@ def test_public_hero_provenance_is_in_docs_not_watermarks():
         assert 'SYNTHETIC' not in raw
         assert '/home/' not in raw and '/tmp/' not in raw
         assert '@font-face' not in raw and 'url(' not in raw.replace('url(#','')
-        assert 'Iosevka Term' in raw or 'monospace' in raw
+        assert 'Fira Code' in raw or 'monospace' in raw
     text=''.join(ET.fromstring((ROOT/'docs/media/02-page-fault.svg').read_text()).itertext())
     assert text.count('NEXT\u00a0EXECUTION')==1
     assert 'FAULT\u00a0RESOLVED' in text

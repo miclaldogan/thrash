@@ -10,8 +10,11 @@ BONE = '#ddd7c9'
 GRAPHITE = '#858580'
 FAINT = '#515552'
 CYAN = '#90c7c5'
-AMBER = '#d2ac70'
-RUST = '#cf986e'
+AMBER = '#d9b56e'  # IRQ arrival / pending idea
+DECISION = '#c5a373'
+DECISION_DIM = '#b29876'
+ZOMBIE = '#a49386'
+RUST = '#c68b68'
 RED = '#e77870'
 BACKGROUND = '#090b0b'
 FRAMES_PER_UNIT = 16
@@ -83,8 +86,13 @@ def dispatch_text(view, width=100, phase=0, motion=False, compact=False):
     out.append(scar.line if scar.dispatches else 'no recorded dispatches in this interval', style=FAINT)
     out.append('\n', style=FAINT)
     out.append('     NOW   ', style=GRAPHITE)
-    out.append(current.line+'▶\n', style=RED if 'switch rate' in view.diagnostics.report.fired else BONE)
-    out.append('           '+current.marks+'\n', style=AMBER)
+    out.append(current.line, style=RED if view.diagnostics.mode in ('THRASHING','PANIC') else BONE)
+    running = any(r['proc'].state == State.RUNNING for r in view.rows)
+    out.append('▶\n', style=CYAN if running else GRAPHITE)
+    out.append('           ')
+    for mark in current.marks:
+        out.append(mark, style=RUST if mark == '!' else AMBER)
+    out.append('\n')
     if not compact:
         out.append('           ↑ IRQ   ! reconstruction   ◆ both   × multiple dispatches / cell\n', style=GRAPHITE)
     if motion and 'switch rate' in view.diagnostics.report.fired:
@@ -119,13 +127,17 @@ def page_text(view, width=100, phase=0, motion=False, migration=None, compact=Fa
     jitter = ' ' if motion and 'working-set pressure' in report.fired and phase%2 else ''
     def blocks(chars):
         return ' '.join(chars[i:i+4] for i in range(0,len(chars),4))
+    running = next((code[r['proc'].alias] for r in view.rows if r['proc'].state == State.RUNNING), None)
     for i in range(0,max(1,len(glyphs)),cols):
         prefix = '   + ' if i >= capacity*FRAMES_PER_UNIT and capacity else '     '
-        out.append(prefix+jitter+blocks(glyphs[i:i+cols])+'\n', style=RED if prefix=='   + ' else BONE)
+        out.append(prefix+jitter, style=RED if prefix=='   + ' else BONE)
+        for glyph in blocks(glyphs[i:i+cols]):
+            out.append(glyph, style=CYAN if glyph == running else GRAPHITE if glyph == '·' else BONE)
+        out.append('\n')
     if not glyphs: out.append('     no runnable allocation\n', style=GRAPHITE)
     if migration:
         alias,ticks = migration
-        out.append('     '+code.get(alias,'?')+' '+('│' if ticks>2 else '↓')+' PAGE OUT · saved working set\n', style=CYAN)
+        out.append('     '+code.get(alias,'?')+' '+('│' if ticks>2 else '↓')+' PAGE OUT · saved working set\n', style=GRAPHITE)
     horizon = '─'*max(4,min(30,(width-24)//2))
     out.append(f'     {horizon} SWAP HORIZON {horizon}\n', style=GRAPHITE)
     if swapped:
@@ -172,6 +184,8 @@ def core_text(view, selected=None, compact=False, width=100):
     out.append('     NEXT  '+ui.safe(img.next_action or 'Not recorded.')+'\n', style=CYAN)
     if view.now-img.meta.created_at >= getattr(view,'stale_hours',24)*3600:
         out.append('     SAVED INSTRUCTION MAY BE STALE · C checks drift\n',style=RUST)
+    for blocker in img.blockers:
+        out.append('     BLOCKER '+ui.safe(blocker)+'\n', style=RED)
     out.rstrip()
     return out
 
@@ -182,14 +196,14 @@ def scheduler_line(view, row, selected):
     state = 'STARVED' if wait and wait.starved else row['state'].value
     symbol = '▶' if selected else '†' if row['state'] == State.ZOMBIE else '◇' if p.state==State.SLEEPING else '⋯' if state=='STARVED' else ' '
     code = tokens(view)[p.alias]
-    out = Text(f'{symbol} {p.pid_str} {code}  {p.alias:<19} {state:<10}', style=CYAN if p.state==State.RUNNING else BONE if selected else GRAPHITE)
+    out = Text(f'{symbol} {p.pid_str} {code}  {p.alias:<19} {state:<10}', style=CYAN if p.state==State.RUNNING else ZOMBIE if row['state']==State.ZOMBIE else BONE if selected else GRAPHITE)
     out.append(f"  WSS≈{row['ctx'] or 0}ctx", style=GRAPHITE)
     cf = view.images.get(p.alias)
     if cf:
         out.append(f'  {ui.fmt_age(view.now-cf.image.meta.created_at)}', style=GRAPHITE)
     else: out.append('  unloaded', style=AMBER)
     if wait and wait.starved: out.append(f'  {wait.other_dispatches} others dispatched', style=AMBER)
-    if row['state'] == State.ZOMBIE: out.append(f"  {row['inactive_days']:.0f}d idle / {row['residue']} residue", style=RUST)
+    if row['state'] == State.ZOMBIE: out.append(f"  {row['inactive_days']:.0f}d idle / {row['residue']} residue", style=ZOMBIE)
     return out
 
 
@@ -206,7 +220,7 @@ def irq_text(irqs, phase=0, motion=False):
 def restoration_text(report, stage=4):
     """A staged presentation of the canonical report, not staged/fake I/O."""
     out = Text()
-    def heading(t): out.append(t+'\n',style=GRAPHITE)
+    def heading(t,style=GRAPHITE): out.append(t+'\n',style=style)
     def line(t,style=BONE): out.append(ui.safe(t)+'\n',style=style)
     if not report.available:
         heading('CONTEXT UNAVAILABLE')
@@ -227,13 +241,13 @@ def restoration_text(report, stage=4):
         heading('\nYOU WERE HERE')
         line(report.what_happened or 'Work summary not recorded.')
         for item in report.completed:
-            line('✓ '+item.text+(' [inferred]' if not item.explicit else ''))
+            line('✓ '+item.text+(' [inferred]' if not item.explicit else ''),CYAN)
             if item.source: line('  evidence: '+item.source,GRAPHITE)
         if not report.completed: line('No completed work recorded.',GRAPHITE)
-        heading('\nYOU DECIDED')
+        heading('\nYOU DECIDED',DECISION)
         for d in report.decisions:
             line(d.text+(' [inferred]' if not d.explicit else ''))
-            line('  why: '+(d.reason or 'Reason not recorded.'))
+            line('  why: '+(d.reason or 'Reason not recorded.'),DECISION_DIM)
             if d.source: line('  evidence: '+d.source,GRAPHITE)
         if not report.decisions: line('Not recorded.',GRAPHITE)
         heading('\nYOU STOPPED AT')
@@ -249,12 +263,12 @@ def restoration_text(report, stage=4):
             for evidence in stale.evidence: line('  evidence: '+evidence,GRAPHITE)
         heading('\nSTILL OPEN')
         for item in report.unresolved: line('○ '+item)
-        for item in report.blockers: line('BLOCKER '+item,RUST)
+        for item in report.blockers: line('BLOCKER '+item,RED)
         if not report.unresolved and not report.blockers: line('Nothing recorded.',GRAPHITE)
         heading('\nWORKING FILES')
         line(' · '.join(report.relevant_files) or 'Not recorded.',GRAPHITE)
     if stage>=4:
-        heading('\nNEXT EXECUTION')
+        heading('\nNEXT EXECUTION',CYAN)
         line(report.next_action or 'Review the saved evidence and record one immediate next step.',CYAN)
         if report.drift_level!='NONE': line('Review drift before executing a saved instruction.',RUST)
         line('\nFAULT RESOLVED',GRAPHITE)

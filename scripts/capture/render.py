@@ -10,8 +10,8 @@ from rich._export_format import CONSOLE_SVG_FORMAT
 
 def font():
     try:
-        family=subprocess.check_output(['fc-match','Iosevka Term','-f','%{family}'],text=True)
-        if 'Iosevka Term' in family:return 'Iosevka Term',.5
+        family=subprocess.check_output(['fc-match','Fira Code','-f','%{family}'],text=True)
+        if 'Fira Code' in family:return 'Fira Code',1200/1950  # Fira Code hmtx advance / head unitsPerEm
     except (OSError,subprocess.CalledProcessError):pass
     return 'monospace',.61
 

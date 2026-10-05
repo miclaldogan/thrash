@@ -36,6 +36,6 @@ def render(source,destination):
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--source',type=Path,default=Path('docs/eval/results.json'))
+    p.add_argument('--source',type=Path,default=Path('docs/eval/prompt4-results.json'))
     p.add_argument('--output',type=Path,default=Path('docs/media/08-sentry-trace.svg'))
     args=p.parse_args();render(args.source,args.output)

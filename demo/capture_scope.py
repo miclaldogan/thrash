@@ -20,7 +20,6 @@ async def settle(app,pilot):
 def svg(app,path):
     # Preserve leading spaces with SVG renderers that otherwise collapse them.
     text=app.export_screenshot().replace('<svg ','<svg xml:space="preserve" ',1)
-    text = text.replace("Fira Code", "Iosevka Term")
     path.write_text(text)
 
 
