@@ -6,6 +6,8 @@ All numbers in here are deterministic. The model is only ever asked for text
 
 from __future__ import annotations
 
+from .tracing import traced, span
+
 import statistics
 import subprocess
 import time
@@ -195,6 +197,7 @@ class Kernel:
     def rules(self, p: Process) -> IgnoreRules:
         return IgnoreRules.load(Path(p.path), self.cfg.global_ignore_path, ScanPolicy(self.cfg.excluded_roots))
 
+    @traced("thrash.process_image.load")
     def load_context(self, p: Process) -> ContextFile | None:
         return ContextFile.read(self.image_path(p))
 
@@ -205,6 +208,7 @@ class Kernel:
         return self._extractor
 
     # --- snapshot / restore ------------------------------------------------
+    @traced("thrash.process.snapshot")
     def snapshot(self, proc: Process, force: bool = False) -> SnapshotResult:
         now = self.clock()
         root = Path(proc.path)
@@ -236,6 +240,7 @@ class Kernel:
         cf.write(self.swap_path(proc))
         return self.swap_path(proc)
 
+    @traced("thrash.page_fault")
     def restore(self, proc: Process, reconstruct: bool = True) -> RestoreReport:
         t0 = time.monotonic()
         now = self.clock()

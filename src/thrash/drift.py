@@ -6,6 +6,8 @@ Deterministic. We never claim a contradiction; we report evidence and say
 
 from __future__ import annotations
 
+from .tracing import traced, span
+
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -57,6 +59,7 @@ def open_assumptions(image: ProcessImage) -> list[str]:
     return out
 
 
+@traced("thrash.drift.detect")
 def compute_drift(root: Path, image: ProcessImage, saved: Fingerprint, rules: IgnoreRules, now: float) -> DriftReport:
     report = DriftReport()
     cur = gc.current_fingerprint(root, rules, now)

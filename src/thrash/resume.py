@@ -1,4 +1,5 @@
 """Canonical restored context. The model supplies semantics; disk changes remain code."""
+from .tracing import traced
 from pydantic import BaseModel, Field
 
 from .drift import DriftReport, StaleAssumption
@@ -39,6 +40,7 @@ class ResumeReport(BaseModel):
     available: bool = False
 
 
+@traced("thrash.restore.render")
 def build_resume_report(alias: str, image: ProcessImage | None,
                         drift: DriftReport | None = None) -> ResumeReport:
     drift = drift or DriftReport()

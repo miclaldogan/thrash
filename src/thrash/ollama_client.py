@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from .config import Config
+from .tracing import span
 
 
 class ModelError(Exception):
@@ -33,6 +34,8 @@ class ModelMissing(ModelError):
 class Reply:
     text: str
     seconds: float
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 def local_url(cfg: Config) -> str:
@@ -93,7 +96,23 @@ def chat_json(cfg: Config, system: str, messages: list[dict], schema: dict | Non
     }
     t0 = time.monotonic()
     try:
-        r = client.post(f"{url}/api/chat", json=payload)
+        with span("thrash.gemma.resume", **{
+            "model_family": "gemma" if cfg.model.startswith("gemma") else "other",
+            "gen_ai.system": "ollama", "gen_ai.operation.name": "chat",
+            "gen_ai.request.model": cfg.model,
+            "retry_count": sum(m.get("role") == "assistant" for m in messages),
+        }) as metrics:
+            r = client.post(f"{url}/api/chat", json=payload)
+            metrics["inference_ms"] = round((time.monotonic()-t0)*1000, 3)
+            metrics["failed"] = r.status_code >= 400
+            if r.status_code == 200:
+                body = r.json()
+                metrics["gen_ai.usage.input_tokens"] = body.get("prompt_eval_count")
+                metrics["gen_ai.usage.output_tokens"] = body.get("eval_count")
+                for source, target in (("load_duration", "model_load_ms"), ("prompt_eval_duration", "prompt_eval_ms"),
+                                       ("eval_duration", "generation_ms")):
+                    if type(body.get(source)) in (int, float):
+                        metrics[target] = body[source] / 1_000_000
         if r.status_code == 404:
             raise ModelMissing(cfg.model, [])
         r.raise_for_status()
@@ -105,4 +124,5 @@ def chat_json(cfg: Config, system: str, messages: list[dict], schema: dict | Non
     finally:
         if own:
             client.close()
-    return Reply(text=text, seconds=time.monotonic() - t0)
+    return Reply(text=text, seconds=time.monotonic() - t0,
+                 input_tokens=r.json().get("prompt_eval_count"), output_tokens=r.json().get("eval_count"))

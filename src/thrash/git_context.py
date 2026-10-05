@@ -6,6 +6,8 @@ listed, read, or fingerprinted.
 
 from __future__ import annotations
 
+from .tracing import traced, span
+
 import os
 import hashlib
 import re
@@ -215,6 +217,7 @@ def _doc_score(rel: str, mtime: float) -> tuple[int, float]:
     return (2 if hinted and doc else 1 if doc else 0, mtime)
 
 
+@traced("thrash.context.collect")
 def gather_context(root: Path, cfg: Config, rules: IgnoreRules, now: float) -> RepoContext:
     policy = ScanPolicy(tuple(set(cfg.excluded_roots + rules.policy.excluded_roots)))
     policy.require_root(root)

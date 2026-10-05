@@ -6,6 +6,7 @@ import time
 from typing import Protocol
 
 from . import prompts
+from .tracing import span
 from .config import Config
 from .git_context import RepoContext
 from .ollama_client import ModelError, chat_json
@@ -44,6 +45,18 @@ def sanitize(out: ModelOutput, allowed: set[str]) -> tuple[ModelOutput, int]:
     return out, dropped
 
 
+def validate(text):
+    with span("thrash.schema.validate") as data:
+        try:
+            result = parse_model_json(text)
+        except ImageError:
+            data["schema_valid"] = False
+            raise
+        data.update(schema_valid=True, decision_count=len(result.decisions),
+                    completed_count=len(result.completed), unresolved_count=len(result.unresolved))
+        return result
+
+
 def ollama_extractor(cfg: Config) -> Extractor:
     schema = ModelOutput.model_json_schema()
     # Saved legacy images remain permissive; new generations must address every
@@ -54,12 +67,13 @@ def ollama_extractor(cfg: Config) -> Extractor:
             definition["required"] = list(definition["properties"])
 
     def run(alias: str, ctx: RepoContext, previous: ProcessImage | None, now: float) -> ProcessImage:
-        user = public_text(prompts.build_user_prompt(alias, ctx.render(), previous))
+        with span("thrash.privacy.filter", context_file_count=len(ctx.allowed_paths)):
+            user = public_text(prompts.build_user_prompt(alias, ctx.render(), previous))
         messages = [{"role": "user", "content": user}]
         t0 = time.monotonic()
         reply = chat_json(cfg, prompts.SYSTEM, messages, schema)
         try:
-            out = parse_model_json(reply.text)
+            out = validate(reply.text)
         except ImageError as first:
             # one repair attempt, then give up loudly: never store a guess
             messages += [
@@ -67,7 +81,7 @@ def ollama_extractor(cfg: Config) -> Extractor:
                 {"role": "user", "content": prompts.build_repair_prompt(str(first))},
             ]
             reply = chat_json(cfg, prompts.SYSTEM, messages, schema)
-            out = parse_model_json(reply.text)  # raises ImageError
+            out = validate(reply.text)  # raises ImageError
         out, dropped = sanitize(out, ctx.allowed_paths)
         image = ProcessImage(
             **out.model_dump(),

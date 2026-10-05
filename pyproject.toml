@@ -19,6 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+sentry = ["sentry-sdk>=2.71,<3"]
 dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [project.scripts]
