@@ -135,12 +135,12 @@ class FaultScreen(ReportScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id='fault-shell'):
-            yield Static(Text('PAGE FAULT\n'+self.heading.removeprefix('PAGE FAULT · ')+(' / SYNTHETIC SCENARIO' if self.app.synthetic else ''),style=scope.BONE), id='fault-title')
+            yield Static(Text('PAGE FAULT\n'+self.heading.removeprefix('PAGE FAULT · '),style=scope.BONE), id='fault-title')
             yield Static('', id='fault-status', markup=False)
             with VerticalScroll(id='fault-scroll'):
                 yield Static('', id='fault-stream', markup=False)
             yield Static('', id='fault-next', markup=False)
-            yield Static('SPACE REVEAL   ENTER RESOLVE   ESC RETURN', id='fault-rail', markup=False)
+            yield Static('SPACE reveal   ESC return', id='fault-rail', markup=False)
 
     def on_mount(self):
         self.present()
@@ -184,6 +184,7 @@ class FaultScreen(ReportScreen):
                 status += f' / confidence {self.report.confidence:.2f} (model)'
             if self.report.snapshot_timestamp is not None:
                 status += ' / '+ui.fmt_age(max(0,self.app.kernel.clock()-self.report.snapshot_timestamp))+' old'
+        self.query_one('#fault-rail',Static).display = self.stage < 4
         self.query_one('#fault-status',Static).update(Text(status,style=scope.GRAPHITE))
         self.query_one('#fault-stream',Static).update(text)
         if self.report and self.report.available and self.stage>=3:
@@ -191,7 +192,7 @@ class FaultScreen(ReportScreen):
             next_text.append(ui.safe(self.report.next_action or 'Review saved evidence.'),style=scope.CYAN)
             if self.report.drift_level != 'NONE':
                 next_text.append('\nReview changed evidence before executing the saved instruction.',style=scope.RUST)
-            next_text.append('\nFAULT RESOLVED · Enter returns to the kernel' if self.stage==4 else '\nSaved instruction / inspect changed evidence first',style=scope.GRAPHITE)
+            next_text.append('\n\nFAULT RESOLVED   ENTER return to execution' if self.stage==4 else '\nSaved instruction / inspect changed evidence first',style=scope.GRAPHITE)
             self.query_one('#fault-next',Static).update(next_text)
         else: self.query_one('#fault-next',Static).update('')
 
@@ -205,7 +206,7 @@ class PanicScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id='panic-shell'):
-            yield Static('KERNEL PANIC'+('\nSYNTHETIC SCENARIO' if self.app.synthetic else ''),id='panic-title',markup=False)
+            yield Static('KERNEL PANIC',id='panic-title',markup=False)
             yield Static('',id='panic-counts',markup=False)
             yield Static('S SUSPEND    I INTERRUPTS    C CONTINUE',id='panic-rail',markup=False)
 
@@ -220,7 +221,7 @@ class PanicScreen(ModalScreen):
         text = Text('coherent working set lost\nRECOVERY ADVISORY\n\n',style=scope.GRAPHITE,justify='center')
         text.append(f'{d.report.active} runnable\n{d.report.switches} switches / {d.report.window_hours:g}h\n'
                     f'{d.pending_irqs} interrupts\n{d.stale_images} stale images\n\n',style=scope.BONE)
-        text.append('scheduler is alive.\ncontext pressure is high.',style=scope.GRAPHITE)
+        text.append("scheduler is alive.\n\nuseful work isn't.",style=scope.GRAPHITE)
         self.query_one('#panic-counts',Static).update(text)
 
     def action_continue(self):
@@ -254,7 +255,7 @@ class KernelApp(App):
     ENABLE_COMMAND_PALETTE = False
     CSS = '''
     Screen { background: #090b0b; color: #ddd7c9; }
-    * { scrollbar-color: #515552; scrollbar-background: #090b0b; scrollbar-color-hover: #858580; scrollbar-color-active: #ddd7c9; }
+    * { scrollbar-size: 1 1; scrollbar-color: #515552; scrollbar-background: #090b0b; scrollbar-color-hover: #858580; scrollbar-color-active: #ddd7c9; }
     #identity { height: 2; padding: 0 2; color: #858580; }
     #metrics { height: auto; padding: 0 2; color: #858580; }
     #body { height: 1fr; padding: 0 2; }
@@ -348,8 +349,6 @@ class KernelApp(App):
     def on_mount(self):
         self.query_one(DataTable).add_column('scheduler', key='scheduler')
         self.query_one(DataTable).focus(scroll_visible=False)
-        if self.synthetic:
-            self.query_one('#identity', Static).update('HUMAN KERNEL SCOPE / 01 · SYNTHETIC HISTORY & IMAGES          THRASH')
         self.refresh_monitor()
         self.set_interval(3, self.refresh_monitor)
         self.set_interval(.5, self.animate_pressure)
@@ -365,7 +364,7 @@ class KernelApp(App):
         return self.aliases[table.cursor_row] if self.aliases and table.cursor_row < len(self.aliases) else None
 
     def notice(self, message):
-        self.query_one('#notice', Static).update(Text(ui.safe(message)))
+        self.query_one('#notice', Static).update(Text(ui.safe(message.replace("SYNTHETIC SCENE", "SCENE") if self.synthetic else message)))
 
     def refresh_monitor(self):
         if not self.busy and (not isinstance(self.screen, ModalScreen) or isinstance(self.screen, PanicScreen)):
