@@ -30,7 +30,7 @@ def fixture_image(alias, ctx, previous, now):
     """Hand-authored fixture, not represented as a model response."""
     image = ProcessImage(
         project=alias,
-        summary='Built the synthetic camera prototype and checked idle poses. Turn testing is unfinished.',
+        summary='Built the camera prototype and checked idle poses. Turn testing is unfinished.',
         completed=[{'text':'Camera follow prototype runs', 'source':'notes.md', 'explicit':True}],
         decisions=[{'text':'Validate rig before engine integration', 'reason':'Avoid rebuilding an untested rig',
                     'source':'notes.md', 'explicit':True}],

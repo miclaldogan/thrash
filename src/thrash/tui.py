@@ -386,7 +386,7 @@ class KernelApp(App):
                       'rescan':'Rebuilding context with local Gemma…',
                       'suspend':'Serializing working set to swap…', 'wake':'Loading saved working set…',
                       'kill':'Recovering final state and writing core dump…', 'irq':'Queuing interrupt…',
-                      'ack':'Acknowledging interrupt…', 'demo':'Advancing explicitly synthetic scenario…'}
+                      'ack':'Acknowledging interrupt…', 'demo':'Advancing scenario…'}
             self.notice(labels[action])
         if action in ('switch', 'wake'):
             self.fault_screen = FaultScreen('PAGE FAULT · ' + alias, Text(), reduced_motion=self.reduced_motion)
