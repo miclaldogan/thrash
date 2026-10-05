@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import json
 from typing import Protocol
 
 from . import prompts
@@ -68,7 +69,9 @@ def ollama_extractor(cfg: Config) -> Extractor:
 
     def run(alias: str, ctx: RepoContext, previous: ProcessImage | None, now: float) -> ProcessImage:
         with span("thrash.privacy.filter", context_file_count=len(ctx.allowed_paths)):
-            user = public_text(prompts.build_user_prompt(alias, ctx.render(), previous))
+            user = public_text("OUTPUT SCHEMA (structure, not project evidence):\n" +
+                               json.dumps(schema, separators=(",", ":")) + "\n\n" +
+                               prompts.build_user_prompt(alias, ctx.render(), previous))
         messages = [{"role": "user", "content": user}]
         t0 = time.monotonic()
         reply = chat_json(cfg, prompts.SYSTEM, messages, schema)

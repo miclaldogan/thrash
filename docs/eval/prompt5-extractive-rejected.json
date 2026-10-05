@@ -1,0 +1,2128 @@
+{
+  "model": "gemma3:4b",
+  "scenario_count": 8,
+  "runtime_seconds": 144.149,
+  "median_restoration_seconds": 8.368,
+  "schema_valid": 8,
+  "keyword_checks": {
+    "task": 7,
+    "done": 4,
+    "decision": 8,
+    "reason": 8,
+    "open": 8,
+    "next": 8
+  },
+  "uploaded": false,
+  "results": [
+    {
+      "scenario": "game-alpha",
+      "seconds": 87.942,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": true,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Test the jaw at 45 degrees",
+          "confidence": 0.9
+        },
+        "registers": {},
+        "stack": [
+          "Test the jaw at 45 degrees in notes.md"
+        ],
+        "open_handles": [
+          "notes.md"
+        ],
+        "decisions": [
+          {
+            "text": "Defer engine integration",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": "The jaw rig has not passed the turn test"
+          }
+        ],
+        "unresolved": [
+          "Does the jaw deform at 45 degrees?"
+        ],
+        "blockers": [],
+        "next_action": "Test the jaw at 45 degrees in notes.md",
+        "last_useful_state": "",
+        "evidence": [],
+        "summary": "CURRENT / STOPPED AT: Validate jaw deformation",
+        "completed": [
+          {
+            "text": "Camera follow prototype runs",
+            "source": "notes.md",
+            "explicit": true
+          }
+        ],
+        "purpose": "Small personal experiment.",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "99145f83c5e240e0",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 87940.81
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "9d4210c52ee44c9f",
+              "parent_span_id": "99145f83c5e240e0",
+              "data": {
+                "duration_ms": 0.038
+              },
+              "start_timestamp": 1791160333.47017,
+              "timestamp": 1791160333.4702084
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "af06a0eb9621460b",
+              "parent_span_id": "a47061ce40044dba",
+              "data": {
+                "duration_ms": 0.023
+              },
+              "start_timestamp": 1791160333.470325,
+              "timestamp": 1791160333.47035
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "d0cddb717a2448b0",
+              "parent_span_id": "a47061ce40044dba",
+              "data": {
+                "duration_ms": 6.43
+              },
+              "start_timestamp": 1791160333.4706588,
+              "timestamp": 1791160333.4770892
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "05ddb55efc0d4d7d",
+              "parent_span_id": "a47061ce40044dba",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 4.847
+              },
+              "start_timestamp": 1791160333.52157,
+              "timestamp": 1791160333.5264184
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "9424838a4fa44409",
+              "parent_span_id": "a47061ce40044dba",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 87850.63,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1817,
+                "gen_ai.usage.output_tokens": 394,
+                "model_load_ms": 45712.320942,
+                "prompt_eval_ms": 31135.8,
+                "generation_ms": 10963.797,
+                "duration_ms": 87850.62
+              },
+              "start_timestamp": 1791160333.5590367,
+              "timestamp": 1791160421.4096587
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "5706cf16ea8c48c1",
+              "parent_span_id": "a47061ce40044dba",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 1,
+                "completed_count": 1,
+                "unresolved_count": 1,
+                "duration_ms": 0.099
+              },
+              "start_timestamp": 1791160421.40981,
+              "timestamp": 1791160421.40991
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "a47061ce40044dba",
+              "parent_span_id": "99145f83c5e240e0",
+              "data": {
+                "duration_ms": 87940.088
+              },
+              "start_timestamp": 1791160333.4702616,
+              "timestamp": 1791160421.41035
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "4313a8440fdc42ef",
+              "parent_span_id": "99145f83c5e240e0",
+              "data": {
+                "duration_ms": 0.289
+              },
+              "start_timestamp": 1791160421.4103837,
+              "timestamp": 1791160421.4106736
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "105a1dc8bad44e3f86c57d639a437c18",
+              "span_id": "7c1a656970ed4b5e",
+              "parent_span_id": "99145f83c5e240e0",
+              "data": {
+                "duration_ms": 0.129
+              },
+              "start_timestamp": 1791160421.4107375,
+              "timestamp": 1791160421.4108677
+            }
+          ],
+          "start_timestamp": 1791160333.4700773,
+          "timestamp": 1791160421.4108887,
+          "event_id": "66e71cab48f9434c908e48828955ca9c"
+        }
+      ],
+      "cached_seconds": 0.002439,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "cb810502666645f0bcb69f059a47873e",
+              "span_id": "013718b1830146ee",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.024428317414389715,
+                "duration_ms": 1.977
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "cb810502666645f0bcb69f059a47873e",
+              "span_id": "244ed623a1ae472c",
+              "parent_span_id": "013718b1830146ee",
+              "data": {
+                "duration_ms": 0.147
+              },
+              "start_timestamp": 1791160421.4123316,
+              "timestamp": 1791160421.4124784
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "cb810502666645f0bcb69f059a47873e",
+              "span_id": "45f7375d7086447f",
+              "parent_span_id": "013718b1830146ee",
+              "data": {
+                "duration_ms": 1.157
+              },
+              "start_timestamp": 1791160421.412916,
+              "timestamp": 1791160421.4140737
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "cb810502666645f0bcb69f059a47873e",
+              "span_id": "237deb71e8c94c1d",
+              "parent_span_id": "013718b1830146ee",
+              "data": {
+                "duration_ms": 0.049
+              },
+              "start_timestamp": 1791160421.4141142,
+              "timestamp": 1791160421.414164
+            }
+          ],
+          "start_timestamp": 1791160421.4122024,
+          "timestamp": 1791160421.4141798,
+          "event_id": "64aaa674461e48d3af41f88204c87e3d"
+        }
+      ]
+    },
+    {
+      "scenario": "paper-crane",
+      "seconds": 7.647,
+      "schema_valid": true,
+      "checks": {
+        "task": false,
+        "done": false,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Audit the three uncited claims in notes.md",
+          "confidence": 0.95
+        },
+        "registers": {},
+        "stack": [
+          "Audit the three uncited claims in notes.md"
+        ],
+        "open_handles": [],
+        "decisions": [
+          {
+            "text": "Use numeric citations",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": "The journal requires numbered references"
+          }
+        ],
+        "unresolved": [
+          "Are three claims missing citations?"
+        ],
+        "blockers": [],
+        "next_action": "Audit the three uncited claims in notes.md",
+        "last_useful_state": "",
+        "evidence": [],
+        "summary": "CURRENT / STOPPED AT: Check citation coverage",
+        "completed": [],
+        "purpose": "Small personal experiment.",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "501409539a4e4d7d",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 7645.795
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "ec683bcecf4a430e",
+              "parent_span_id": "501409539a4e4d7d",
+              "data": {
+                "duration_ms": 0.035
+              },
+              "start_timestamp": 1791160421.4153888,
+              "timestamp": 1791160421.4154236
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "dffc4084939d4d12",
+              "parent_span_id": "c0d4b3dc887446b4",
+              "data": {
+                "duration_ms": 0.02
+              },
+              "start_timestamp": 1791160421.4155474,
+              "timestamp": 1791160421.4155674
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "65b77729b96d440a",
+              "parent_span_id": "c0d4b3dc887446b4",
+              "data": {
+                "duration_ms": 1.958
+              },
+              "start_timestamp": 1791160421.4158342,
+              "timestamp": 1791160421.4177911
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "a9de486427cc4251",
+              "parent_span_id": "c0d4b3dc887446b4",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 3.362
+              },
+              "start_timestamp": 1791160421.4578145,
+              "timestamp": 1791160421.4611778
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "b0f0b740665b46b3",
+              "parent_span_id": "c0d4b3dc887446b4",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 7577.556,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1806,
+                "gen_ai.usage.output_tokens": 311,
+                "model_load_ms": 751.528707,
+                "prompt_eval_ms": 311.263,
+                "generation_ms": 6459.111,
+                "duration_ms": 7577.554
+              },
+              "start_timestamp": 1791160421.4826152,
+              "timestamp": 1791160429.0601707
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "84b118a7028a43dd",
+              "parent_span_id": "c0d4b3dc887446b4",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 1,
+                "completed_count": 0,
+                "unresolved_count": 1,
+                "duration_ms": 0.08
+              },
+              "start_timestamp": 1791160429.0603356,
+              "timestamp": 1791160429.0604167
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "c0d4b3dc887446b4",
+              "parent_span_id": "501409539a4e4d7d",
+              "data": {
+                "duration_ms": 7645.335
+              },
+              "start_timestamp": 1791160421.415472,
+              "timestamp": 1791160429.0608072
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "b37a5a73526b48d9",
+              "parent_span_id": "501409539a4e4d7d",
+              "data": {
+                "duration_ms": 0.147
+              },
+              "start_timestamp": 1791160429.060844,
+              "timestamp": 1791160429.0609922
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "4f10d432a4f540499a9f0bae423cfd57",
+              "span_id": "3159a4bc78974763",
+              "parent_span_id": "501409539a4e4d7d",
+              "data": {
+                "duration_ms": 0.043
+              },
+              "start_timestamp": 1791160429.061037,
+              "timestamp": 1791160429.0610807
+            }
+          ],
+          "start_timestamp": 1791160421.4153037,
+          "timestamp": 1791160429.0610993,
+          "event_id": "e79f930c226840d7b7f2a3b399cfaa3c"
+        }
+      ],
+      "cached_seconds": 0.002239,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "2e6b64a1a23b4673b2f5c3b880b7cb2b",
+              "span_id": "a4781284ef8644e7",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0021240234375,
+                "duration_ms": 1.619
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "2e6b64a1a23b4673b2f5c3b880b7cb2b",
+              "span_id": "bd95879007a448a1",
+              "parent_span_id": "a4781284ef8644e7",
+              "data": {
+                "duration_ms": 0.119
+              },
+              "start_timestamp": 1791160429.0620654,
+              "timestamp": 1791160429.062185
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "2e6b64a1a23b4673b2f5c3b880b7cb2b",
+              "span_id": "85d1dda7b8094acd",
+              "parent_span_id": "a4781284ef8644e7",
+              "data": {
+                "duration_ms": 0.959
+              },
+              "start_timestamp": 1791160429.0625262,
+              "timestamp": 1791160429.0634856
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "2e6b64a1a23b4673b2f5c3b880b7cb2b",
+              "span_id": "6198d635b4b14ea5",
+              "parent_span_id": "a4781284ef8644e7",
+              "data": {
+                "duration_ms": 0.038
+              },
+              "start_timestamp": 1791160429.063522,
+              "timestamp": 1791160429.0635602
+            }
+          ],
+          "start_timestamp": 1791160429.0619547,
+          "timestamp": 1791160429.0635746,
+          "event_id": "c43806a886784426a5f016123f8528c2"
+        }
+      ]
+    },
+    {
+      "scenario": "vision-lab",
+      "seconds": 6.266,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": true,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Measure dusk recall using the held-out images",
+          "confidence": 0.95
+        },
+        "registers": {
+          "CURRENT / STOPPED AT": "Measure low-light recall",
+          "baseline": "frozen"
+        },
+        "stack": [
+          "Measure dusk recall using the held-out images"
+        ],
+        "open_handles": [
+          "notes.md"
+        ],
+        "decisions": [
+          {
+            "text": "Keep the baseline frozen",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": "A fixed baseline makes ablation comparisons fair"
+          },
+          {
+            "text": "Will recall fall below 80 percent at dusk?",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": ""
+          }
+        ],
+        "unresolved": [
+          "Will recall fall below 80 percent at dusk?"
+        ],
+        "blockers": [],
+        "next_action": "Measure dusk recall using the held-out images",
+        "last_useful_state": "Baseline detector trained",
+        "evidence": [
+          "notes.md"
+        ],
+        "summary": "Baseline detector trained; Keep the baseline frozen",
+        "completed": [
+          {
+            "text": "Baseline detector trained",
+            "source": "notes.md",
+            "explicit": true
+          }
+        ],
+        "purpose": "Small personal experiment",
+        "failures": [],
+        "resurrection_hint": "Keep the baseline frozen\u201d, \u201cnext_action\u201d:"
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "143381ed266349cc",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 6265.69
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "00dd095a982049c5",
+              "parent_span_id": "143381ed266349cc",
+              "data": {
+                "duration_ms": 0.029
+              },
+              "start_timestamp": 1791160429.0648556,
+              "timestamp": 1791160429.064884
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "7204a4a546ac4f09",
+              "parent_span_id": "8b8c5f1478fc40c9",
+              "data": {
+                "duration_ms": 0.02
+              },
+              "start_timestamp": 1791160429.0649955,
+              "timestamp": 1791160429.0650158
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "235cfdc05f2b41ef",
+              "parent_span_id": "8b8c5f1478fc40c9",
+              "data": {
+                "duration_ms": 1.756
+              },
+              "start_timestamp": 1791160429.0652564,
+              "timestamp": 1791160429.0670125
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "e84c71202dd54536",
+              "parent_span_id": "8b8c5f1478fc40c9",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 4.461
+              },
+              "start_timestamp": 1791160429.0951107,
+              "timestamp": 1791160429.0995727
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "bede87b404fb4dc0",
+              "parent_span_id": "8b8c5f1478fc40c9",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 6203.142,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1814,
+                "gen_ai.usage.output_tokens": 237,
+                "model_load_ms": 663.088307,
+                "prompt_eval_ms": 286.75,
+                "generation_ms": 5215.951,
+                "duration_ms": 6203.141
+              },
+              "start_timestamp": 1791160429.1261556,
+              "timestamp": 1791160435.3292973
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "c3c9668cd1db4980",
+              "parent_span_id": "8b8c5f1478fc40c9",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 2,
+                "completed_count": 1,
+                "unresolved_count": 1,
+                "duration_ms": 0.341
+              },
+              "start_timestamp": 1791160435.3294637,
+              "timestamp": 1791160435.3298051
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "8b8c5f1478fc40c9",
+              "parent_span_id": "143381ed266349cc",
+              "data": {
+                "duration_ms": 6265.247
+              },
+              "start_timestamp": 1791160429.0649343,
+              "timestamp": 1791160435.3301814
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "9bc6f1daf14e40ed",
+              "parent_span_id": "143381ed266349cc",
+              "data": {
+                "duration_ms": 0.149
+              },
+              "start_timestamp": 1791160435.330215,
+              "timestamp": 1791160435.330365
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "fb59c4210c074d3ca62ffc58d5502a05",
+              "span_id": "82613468576a46f1",
+              "parent_span_id": "143381ed266349cc",
+              "data": {
+                "duration_ms": 0.042
+              },
+              "start_timestamp": 1791160435.3304088,
+              "timestamp": 1791160435.3304517
+            }
+          ],
+          "start_timestamp": 1791160429.0647798,
+          "timestamp": 1791160435.3304706,
+          "event_id": "700bde71d2f74ad8896db724cbd886bb"
+        }
+      ],
+      "cached_seconds": 0.002058,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "78f93600f479441faa53380da167ac4b",
+              "span_id": "0e66f1b33d26409b",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0017406407992045085,
+                "duration_ms": 1.641
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "78f93600f479441faa53380da167ac4b",
+              "span_id": "e762754ab6ee4146",
+              "parent_span_id": "0e66f1b33d26409b",
+              "data": {
+                "duration_ms": 0.13
+              },
+              "start_timestamp": 1791160435.3313434,
+              "timestamp": 1791160435.3314734
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "78f93600f479441faa53380da167ac4b",
+              "span_id": "79cc9df84f774df7",
+              "parent_span_id": "0e66f1b33d26409b",
+              "data": {
+                "duration_ms": 0.939
+              },
+              "start_timestamp": 1791160435.3318567,
+              "timestamp": 1791160435.3327966
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "78f93600f479441faa53380da167ac4b",
+              "span_id": "5d42edf2d6c44d7d",
+              "parent_span_id": "0e66f1b33d26409b",
+              "data": {
+                "duration_ms": 0.038
+              },
+              "start_timestamp": 1791160435.3328295,
+              "timestamp": 1791160435.332868
+            }
+          ],
+          "start_timestamp": 1791160435.3312395,
+          "timestamp": 1791160435.3328812,
+          "event_id": "99f2adcdee41436e901ecd7fe58c2e73"
+        }
+      ]
+    },
+    {
+      "scenario": "circuit-garden",
+      "seconds": 9.55,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": true,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Test soil sensor calibration",
+          "confidence": 0.95
+        },
+        "registers": {},
+        "stack": [
+          "Record a one-hour dry-soil calibration run"
+        ],
+        "open_handles": [],
+        "decisions": [
+          {
+            "text": "Sample once per minute",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": "Frequent sampling drained the battery"
+          }
+        ],
+        "unresolved": [
+          "Does dry soil drift after one hour?"
+        ],
+        "blockers": [],
+        "next_action": "Record a one-hour dry-soil calibration run",
+        "last_useful_state": "Sensor wiring verified",
+        "evidence": [],
+        "summary": "Sensor wiring verified; DECISION: Sample once per minute",
+        "completed": [
+          {
+            "text": "Sensor wiring verified",
+            "source": "notes.md",
+            "explicit": true
+          }
+        ],
+        "purpose": "Small personal experiment.",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "20a1c4eb3e594687",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 9548.789
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "8f58b596fb474d51",
+              "parent_span_id": "20a1c4eb3e594687",
+              "data": {
+                "duration_ms": 0.026
+              },
+              "start_timestamp": 1791160435.333866,
+              "timestamp": 1791160435.333892
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "4ee1d3ab897042ef",
+              "parent_span_id": "29980cc4773d4e95",
+              "data": {
+                "duration_ms": 0.017
+              },
+              "start_timestamp": 1791160435.3339872,
+              "timestamp": 1791160435.3340049
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "bdd761d8abea4473",
+              "parent_span_id": "29980cc4773d4e95",
+              "data": {
+                "duration_ms": 1.686
+              },
+              "start_timestamp": 1791160435.334239,
+              "timestamp": 1791160435.3359253
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "935f5337765a4634",
+              "parent_span_id": "29980cc4773d4e95",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 5.761
+              },
+              "start_timestamp": 1791160435.3835177,
+              "timestamp": 1791160435.3892791
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "d7a2373759f44d76",
+              "parent_span_id": "29980cc4773d4e95",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 9440.369,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1809,
+                "gen_ai.usage.output_tokens": 397,
+                "model_load_ms": 834.809474,
+                "prompt_eval_ms": 264.714,
+                "generation_ms": 8282.753,
+                "duration_ms": 9440.294
+              },
+              "start_timestamp": 1791160435.4409485,
+              "timestamp": 1791160444.881246
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "ef9dab04a9ab4a21",
+              "parent_span_id": "29980cc4773d4e95",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 1,
+                "completed_count": 1,
+                "unresolved_count": 1,
+                "duration_ms": 0.457
+              },
+              "start_timestamp": 1791160444.8814287,
+              "timestamp": 1791160444.8816192
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "29980cc4773d4e95",
+              "parent_span_id": "20a1c4eb3e594687",
+              "data": {
+                "duration_ms": 9548.372
+              },
+              "start_timestamp": 1791160435.33393,
+              "timestamp": 1791160444.882301
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "0fbc8951962e4605",
+              "parent_span_id": "20a1c4eb3e594687",
+              "data": {
+                "duration_ms": 0.148
+              },
+              "start_timestamp": 1791160444.882336,
+              "timestamp": 1791160444.8824852
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "1e7879cb75674f888a7a8f434b2e0a86",
+              "span_id": "956a88b76a034e57",
+              "parent_span_id": "20a1c4eb3e594687",
+              "data": {
+                "duration_ms": 0.043
+              },
+              "start_timestamp": 1791160444.882528,
+              "timestamp": 1791160444.8825717
+            }
+          ],
+          "start_timestamp": 1791160435.3337998,
+          "timestamp": 1791160444.8825896,
+          "event_id": "fdac039ccac94147926cdc5d85e9ed5b"
+        }
+      ],
+      "cached_seconds": 0.002016,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "169e0853fbb74de19c6fb142aab8920b",
+              "span_id": "fdc0bd4051284915",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0026526204744974774,
+                "duration_ms": 1.616
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "169e0853fbb74de19c6fb142aab8920b",
+              "span_id": "88d1a2bfaea142ad",
+              "parent_span_id": "fdc0bd4051284915",
+              "data": {
+                "duration_ms": 0.119
+              },
+              "start_timestamp": 1791160444.8834693,
+              "timestamp": 1791160444.8835886
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "169e0853fbb74de19c6fb142aab8920b",
+              "span_id": "f68dd95ff28140a5",
+              "parent_span_id": "fdc0bd4051284915",
+              "data": {
+                "duration_ms": 0.924
+              },
+              "start_timestamp": 1791160444.8839753,
+              "timestamp": 1791160444.8848999
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "169e0853fbb74de19c6fb142aab8920b",
+              "span_id": "ad64bc41b8ef4db5",
+              "parent_span_id": "fdc0bd4051284915",
+              "data": {
+                "duration_ms": 0.035
+              },
+              "start_timestamp": 1791160444.8849306,
+              "timestamp": 1791160444.884966
+            }
+          ],
+          "start_timestamp": 1791160444.883362,
+          "timestamp": 1791160444.8849788,
+          "event_id": "5c3e84b543d24938a010b64010f6e025"
+        }
+      ]
+    },
+    {
+      "scenario": "film-study",
+      "seconds": 8.165,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": false,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Check subtitle timing in scene two",
+          "confidence": 0.9
+        },
+        "registers": {},
+        "stack": [
+          "Check subtitle timing in scene two"
+        ],
+        "open_handles": [
+          "notes.md"
+        ],
+        "decisions": [
+          {
+            "text": "Keep the original soundtrack",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": ""
+          }
+        ],
+        "unresolved": [
+          "Are captions late in scene two?"
+        ],
+        "blockers": [],
+        "next_action": "Check subtitle timing in scene two",
+        "last_useful_state": "",
+        "evidence": [],
+        "summary": "Rough cut exported; Keep the original soundtrack",
+        "completed": [],
+        "purpose": "Small personal experiment",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "598f8287fe384582",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 8164.137
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "ec9ea3a166d14e8c",
+              "parent_span_id": "598f8287fe384582",
+              "data": {
+                "duration_ms": 0.029
+              },
+              "start_timestamp": 1791160444.8859718,
+              "timestamp": 1791160444.886001
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "396e351a1464426f",
+              "parent_span_id": "2f0ae8beba7a48f6",
+              "data": {
+                "duration_ms": 0.019
+              },
+              "start_timestamp": 1791160444.8860989,
+              "timestamp": 1791160444.8861177
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "a4360afacb1941cb",
+              "parent_span_id": "2f0ae8beba7a48f6",
+              "data": {
+                "duration_ms": 1.763
+              },
+              "start_timestamp": 1791160444.8863726,
+              "timestamp": 1791160444.8881352
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "5cbcac17ae4e4fb2",
+              "parent_span_id": "2f0ae8beba7a48f6",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 4.258
+              },
+              "start_timestamp": 1791160444.9311757,
+              "timestamp": 1791160444.9354353
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "4b069c7ab84b4844",
+              "parent_span_id": "2f0ae8beba7a48f6",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 8084.328,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1794,
+                "gen_ai.usage.output_tokens": 330,
+                "model_load_ms": 857.497237,
+                "prompt_eval_ms": 283.377,
+                "generation_ms": 6910.312,
+                "duration_ms": 8084.318
+              },
+              "start_timestamp": 1791160444.964855,
+              "timestamp": 1791160453.0491738
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "d85e739fafd04248",
+              "parent_span_id": "2f0ae8beba7a48f6",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 1,
+                "completed_count": 0,
+                "unresolved_count": 1,
+                "duration_ms": 0.07
+              },
+              "start_timestamp": 1791160453.0493166,
+              "timestamp": 1791160453.0493877
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "2f0ae8beba7a48f6",
+              "parent_span_id": "598f8287fe384582",
+              "data": {
+                "duration_ms": 8163.714
+              },
+              "start_timestamp": 1791160444.8860395,
+              "timestamp": 1791160453.049754
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "ff9632cbc6b64aef",
+              "parent_span_id": "598f8287fe384582",
+              "data": {
+                "duration_ms": 0.14
+              },
+              "start_timestamp": 1791160453.0497966,
+              "timestamp": 1791160453.0499372
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "49094927783b4c0fb0d251405225f72d",
+              "span_id": "a78628d93761487c",
+              "parent_span_id": "598f8287fe384582",
+              "data": {
+                "duration_ms": 0.041
+              },
+              "start_timestamp": 1791160453.0499775,
+              "timestamp": 1791160453.0500195
+            }
+          ],
+          "start_timestamp": 1791160444.8858984,
+          "timestamp": 1791160453.050036,
+          "event_id": "02a4f793bc974cee8db0285032d38ca3"
+        }
+      ],
+      "cached_seconds": 0.00192,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "a7c37942a96f47dbb5e0e765326a0cc9",
+              "span_id": "c025750ae0134073",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.002267988920211792,
+                "duration_ms": 1.509
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "a7c37942a96f47dbb5e0e765326a0cc9",
+              "span_id": "24e987cc5d8f46f4",
+              "parent_span_id": "c025750ae0134073",
+              "data": {
+                "duration_ms": 0.118
+              },
+              "start_timestamp": 1791160453.0508976,
+              "timestamp": 1791160453.0510159
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "a7c37942a96f47dbb5e0e765326a0cc9",
+              "span_id": "6374f95dd413478e",
+              "parent_span_id": "c025750ae0134073",
+              "data": {
+                "duration_ms": 0.902
+              },
+              "start_timestamp": 1791160453.0513265,
+              "timestamp": 1791160453.052229
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "a7c37942a96f47dbb5e0e765326a0cc9",
+              "span_id": "1673b90884174ca5",
+              "parent_span_id": "c025750ae0134073",
+              "data": {
+                "duration_ms": 0.035
+              },
+              "start_timestamp": 1791160453.0522594,
+              "timestamp": 1791160453.052295
+            }
+          ],
+          "start_timestamp": 1791160453.0507982,
+          "timestamp": 1791160453.0523071,
+          "event_id": "fbb4fa851be5421787a5b55118ff87d8"
+        }
+      ]
+    },
+    {
+      "scenario": "signal-box",
+      "seconds": 7.393,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": false,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Reproduce reconnect failure",
+          "confidence": 0.9
+        },
+        "registers": {},
+        "stack": [
+          "Disconnect and reconnect once while recording packet IDs"
+        ],
+        "open_handles": [],
+        "decisions": [],
+        "unresolved": [
+          "Does reconnect duplicate the last packet?"
+        ],
+        "blockers": [],
+        "next_action": "Disconnect and reconnect once while recording packet IDs",
+        "last_useful_state": "Connection logging added",
+        "evidence": [],
+        "summary": "Connection logging added",
+        "completed": [],
+        "purpose": "Small personal experiment",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "8cf1e8b624a14dce",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 7391.149
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "d40f406aa32749b6",
+              "parent_span_id": "8cf1e8b624a14dce",
+              "data": {
+                "duration_ms": 0.029
+              },
+              "start_timestamp": 1791160453.053292,
+              "timestamp": 1791160453.0533211
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "f5b66c71a21e447b",
+              "parent_span_id": "450e79d5bf1546c4",
+              "data": {
+                "duration_ms": 0.019
+              },
+              "start_timestamp": 1791160453.0534198,
+              "timestamp": 1791160453.0534394
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "f4b80223064c4f11",
+              "parent_span_id": "450e79d5bf1546c4",
+              "data": {
+                "duration_ms": 1.718
+              },
+              "start_timestamp": 1791160453.0537055,
+              "timestamp": 1791160453.0554237
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "bee9c8b108274ca0",
+              "parent_span_id": "450e79d5bf1546c4",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 5.45
+              },
+              "start_timestamp": 1791160453.097749,
+              "timestamp": 1791160453.1032019
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "b99859fae9e9434f",
+              "parent_span_id": "450e79d5bf1546c4",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 7294.304,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1805,
+                "gen_ai.usage.output_tokens": 287,
+                "model_load_ms": 920.712309,
+                "prompt_eval_ms": 297.107,
+                "generation_ms": 6028.482,
+                "duration_ms": 7294.302
+              },
+              "start_timestamp": 1791160453.1480386,
+              "timestamp": 1791160460.442342
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "3887df8791f9494e",
+              "parent_span_id": "450e79d5bf1546c4",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 0,
+                "completed_count": 0,
+                "unresolved_count": 1,
+                "duration_ms": 0.146
+              },
+              "start_timestamp": 1791160460.4427474,
+              "timestamp": 1791160460.4428957
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "450e79d5bf1546c4",
+              "parent_span_id": "8cf1e8b624a14dce",
+              "data": {
+                "duration_ms": 7390.31
+              },
+              "start_timestamp": 1791160453.0533593,
+              "timestamp": 1791160460.443669
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "acb683d2c41e4455",
+              "parent_span_id": "8cf1e8b624a14dce",
+              "data": {
+                "duration_ms": 0.329
+              },
+              "start_timestamp": 1791160460.4437435,
+              "timestamp": 1791160460.4440737
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "0ffd9a5c88084211a4b567771026f51f",
+              "span_id": "6ef8ccd5a00246c5",
+              "parent_span_id": "8cf1e8b624a14dce",
+              "data": {
+                "duration_ms": 0.107
+              },
+              "start_timestamp": 1791160460.4442132,
+              "timestamp": 1791160460.444322
+            }
+          ],
+          "start_timestamp": 1791160453.0532198,
+          "timestamp": 1791160460.4443688,
+          "event_id": "d1a4e8436eb34896ab040cc72dc803c4"
+        }
+      ],
+      "cached_seconds": 0.002018,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "6436cc6bb2fa4c1588ac26e007cfc7cc",
+              "span_id": "40bbdd4ac256455a",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.00205356670750512,
+                "duration_ms": 1.609
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "6436cc6bb2fa4c1588ac26e007cfc7cc",
+              "span_id": "c423f7e928504dc9",
+              "parent_span_id": "40bbdd4ac256455a",
+              "data": {
+                "duration_ms": 0.14
+              },
+              "start_timestamp": 1791160460.4463198,
+              "timestamp": 1791160460.4464595
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "6436cc6bb2fa4c1588ac26e007cfc7cc",
+              "span_id": "1f8aa3c0eecf41ef",
+              "parent_span_id": "40bbdd4ac256455a",
+              "data": {
+                "duration_ms": 0.924
+              },
+              "start_timestamp": 1791160460.446794,
+              "timestamp": 1791160460.4477189
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "6436cc6bb2fa4c1588ac26e007cfc7cc",
+              "span_id": "f7feb999966b40f3",
+              "parent_span_id": "40bbdd4ac256455a",
+              "data": {
+                "duration_ms": 0.045
+              },
+              "start_timestamp": 1791160460.4477482,
+              "timestamp": 1791160460.4477937
+            }
+          ],
+          "start_timestamp": 1791160460.4461968,
+          "timestamp": 1791160460.4478061,
+          "event_id": "3e858aaf6ba04e2ba922aa6ed65a86c1"
+        }
+      ]
+    },
+    {
+      "scenario": "ink-orbit",
+      "seconds": 8.591,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": true,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Test export margins",
+          "confidence": 0.9
+        },
+        "registers": {},
+        "stack": [
+          "finish the booklet"
+        ],
+        "open_handles": [
+          "notes.md"
+        ],
+        "decisions": [
+          {
+            "text": "Use A5 paper",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": "The booklet must fit a coat pocket"
+          }
+        ],
+        "unresolved": [
+          "Will the inner margin clip the text?"
+        ],
+        "blockers": [],
+        "next_action": "Print one A5 proof and inspect the inner margin",
+        "last_useful_state": "",
+        "evidence": [],
+        "summary": "Nothing has been completed. PLANNED ONLY: finish the booklet.",
+        "completed": [],
+        "purpose": "Small personal experiment",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "1562a11736894e5a",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 8590.212
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "84417a1a43414ec4",
+              "parent_span_id": "1562a11736894e5a",
+              "data": {
+                "duration_ms": 0.027
+              },
+              "start_timestamp": 1791160460.448767,
+              "timestamp": 1791160460.4487944
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "25fc3104c659460c",
+              "parent_span_id": "00cda3040c624fb8",
+              "data": {
+                "duration_ms": 0.019
+              },
+              "start_timestamp": 1791160460.4488945,
+              "timestamp": 1791160460.4489138
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "473727e736de4274",
+              "parent_span_id": "00cda3040c624fb8",
+              "data": {
+                "duration_ms": 1.876
+              },
+              "start_timestamp": 1791160460.4491677,
+              "timestamp": 1791160460.4510436
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "dc80d7d941684fbe",
+              "parent_span_id": "00cda3040c624fb8",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 3.03
+              },
+              "start_timestamp": 1791160460.4798293,
+              "timestamp": 1791160460.4828603
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "bdb09fbe4d57405a",
+              "parent_span_id": "00cda3040c624fb8",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 8520.723,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1819,
+                "gen_ai.usage.output_tokens": 344,
+                "model_load_ms": 859.305177,
+                "prompt_eval_ms": 336.572,
+                "generation_ms": 7252.146,
+                "duration_ms": 8520.71
+              },
+              "start_timestamp": 1791160460.5172696,
+              "timestamp": 1791160469.0379813
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "8eaeb0f708aa4b1e",
+              "parent_span_id": "00cda3040c624fb8",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 1,
+                "completed_count": 0,
+                "unresolved_count": 1,
+                "duration_ms": 0.081
+              },
+              "start_timestamp": 1791160469.0381343,
+              "timestamp": 1791160469.0382164
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "00cda3040c624fb8",
+              "parent_span_id": "1562a11736894e5a",
+              "data": {
+                "duration_ms": 8589.759
+              },
+              "start_timestamp": 1791160460.4488328,
+              "timestamp": 1791160469.038591
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "26284af33d4441ca",
+              "parent_span_id": "1562a11736894e5a",
+              "data": {
+                "duration_ms": 0.158
+              },
+              "start_timestamp": 1791160469.0386357,
+              "timestamp": 1791160469.038794
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "70fcd915a9dd47ce8c3caa20e4e5552f",
+              "span_id": "4b85651bee9141b2",
+              "parent_span_id": "1562a11736894e5a",
+              "data": {
+                "duration_ms": 0.048
+              },
+              "start_timestamp": 1791160469.0388396,
+              "timestamp": 1791160469.0388885
+            }
+          ],
+          "start_timestamp": 1791160460.4486952,
+          "timestamp": 1791160469.0389078,
+          "event_id": "8eb3596c1c81434aab1caa35927e7a87"
+        }
+      ],
+      "cached_seconds": 0.002687,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "d97153535ffe4de7a63c6de54224638f",
+              "span_id": "832ddd98d9504ca8",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.002386393149693807,
+                "duration_ms": 2.097
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "d97153535ffe4de7a63c6de54224638f",
+              "span_id": "bd733c9f70df4571",
+              "parent_span_id": "832ddd98d9504ca8",
+              "data": {
+                "duration_ms": 0.146
+              },
+              "start_timestamp": 1791160469.039972,
+              "timestamp": 1791160469.0401187
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "d97153535ffe4de7a63c6de54224638f",
+              "span_id": "6cfb6d36b5a94964",
+              "parent_span_id": "832ddd98d9504ca8",
+              "data": {
+                "duration_ms": 1.306
+              },
+              "start_timestamp": 1791160469.0405188,
+              "timestamp": 1791160469.0418248
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "d97153535ffe4de7a63c6de54224638f",
+              "span_id": "8f0332dcc4dc46c5",
+              "parent_span_id": "832ddd98d9504ca8",
+              "data": {
+                "duration_ms": 0.054
+              },
+              "start_timestamp": 1791160469.0418706,
+              "timestamp": 1791160469.0419257
+            }
+          ],
+          "start_timestamp": 1791160469.0398457,
+          "timestamp": 1791160469.0419433,
+          "event_id": "a08551366f4c4b79b48598c85d6eb40e"
+        }
+      ]
+    },
+    {
+      "scenario": "stone-bridge",
+      "seconds": 8.572,
+      "schema_valid": true,
+      "checks": {
+        "task": true,
+        "done": false,
+        "decision": true,
+        "reason": true,
+        "open": true,
+        "next": true
+      },
+      "output": {
+        "program_counter": {
+          "task": "Verify offline search",
+          "confidence": 0.9
+        },
+        "registers": {},
+        "stack": [
+          "Delete one test page and rebuild the local index"
+        ],
+        "open_handles": [],
+        "decisions": [
+          {
+            "text": "Store the index locally",
+            "source": "notes.md",
+            "explicit": true,
+            "reason": "Search must work without internet access"
+          }
+        ],
+        "unresolved": [
+          "Are deleted pages still searchable?"
+        ],
+        "blockers": [],
+        "next_action": "Delete one test page and rebuild the local index",
+        "last_useful_state": "Index builder passes its unit tests",
+        "evidence": [],
+        "summary": "Index builder passes its unit tests",
+        "completed": [],
+        "purpose": "Small personal experiment",
+        "failures": [],
+        "resurrection_hint": ""
+      },
+      "traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "dfd89cb6705d491a",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0,
+                "duration_ms": 8570.893
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "d26fe40a5c0f47b2",
+              "parent_span_id": "dfd89cb6705d491a",
+              "data": {
+                "duration_ms": 0.038
+              },
+              "start_timestamp": 1791160469.0433614,
+              "timestamp": 1791160469.0434
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "71214b879aad4572",
+              "parent_span_id": "ce2e5cbf5b2e4aae",
+              "data": {
+                "duration_ms": 0.027
+              },
+              "start_timestamp": 1791160469.043537,
+              "timestamp": 1791160469.0435638
+            },
+            {
+              "description": "thrash.context.collect",
+              "op": "thrash.context.collect",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "a3b7aca6e6394a4b",
+              "parent_span_id": "ce2e5cbf5b2e4aae",
+              "data": {
+                "duration_ms": 2.429
+              },
+              "start_timestamp": 1791160469.0439162,
+              "timestamp": 1791160469.046346
+            },
+            {
+              "description": "thrash.privacy.filter",
+              "op": "thrash.privacy.filter",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "fa8269d4351a469b",
+              "parent_span_id": "ce2e5cbf5b2e4aae",
+              "data": {
+                "context_file_count": 1,
+                "duration_ms": 3.37
+              },
+              "start_timestamp": 1791160469.07833,
+              "timestamp": 1791160469.0817008
+            },
+            {
+              "description": "thrash.gemma.resume",
+              "op": "gen_ai.request",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "d26480109a0543c3",
+              "parent_span_id": "ce2e5cbf5b2e4aae",
+              "data": {
+                "model_family": "gemma",
+                "gen_ai.system": "ollama",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gemma3:4b",
+                "retry_count": 0,
+                "inference_ms": 8508.132,
+                "failed": false,
+                "gen_ai.usage.input_tokens": 1809,
+                "gen_ai.usage.output_tokens": 355,
+                "model_load_ms": 747.490647,
+                "prompt_eval_ms": 280.183,
+                "generation_ms": 7423.836,
+                "duration_ms": 8508.121
+              },
+              "start_timestamp": 1791160469.1052003,
+              "timestamp": 1791160477.6133232
+            },
+            {
+              "description": "thrash.schema.validate",
+              "op": "thrash.schema.validate",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "b42128b67318433d",
+              "parent_span_id": "ce2e5cbf5b2e4aae",
+              "data": {
+                "schema_valid": true,
+                "decision_count": 1,
+                "completed_count": 0,
+                "unresolved_count": 1,
+                "duration_ms": 0.073
+              },
+              "start_timestamp": 1791160477.6134539,
+              "timestamp": 1791160477.613528
+            },
+            {
+              "description": "thrash.process.snapshot",
+              "op": "thrash.process.snapshot",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "ce2e5cbf5b2e4aae",
+              "parent_span_id": "dfd89cb6705d491a",
+              "data": {
+                "duration_ms": 8570.427
+              },
+              "start_timestamp": 1791160469.0434537,
+              "timestamp": 1791160477.6138809
+            },
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "307c9567676a48b5",
+              "parent_span_id": "dfd89cb6705d491a",
+              "data": {
+                "duration_ms": 0.133
+              },
+              "start_timestamp": 1791160477.613912,
+              "timestamp": 1791160477.6140466
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "db2c86d27b6042a7aae38b127c26f522",
+              "span_id": "e48e456fc4a849f7",
+              "parent_span_id": "dfd89cb6705d491a",
+              "data": {
+                "duration_ms": 0.04
+              },
+              "start_timestamp": 1791160477.6140876,
+              "timestamp": 1791160477.614128
+            }
+          ],
+          "start_timestamp": 1791160469.043257,
+          "timestamp": 1791160477.6141515,
+          "event_id": "08c8725c4cc5469e852883c6a386a4b1"
+        }
+      ],
+      "cached_seconds": 0.002225,
+      "cached_traces": [
+        {
+          "type": "transaction",
+          "transaction": "thrash.page_fault",
+          "platform": "python",
+          "contexts": {
+            "trace": {
+              "trace_id": "4f2e293cdd3c47a4b284fdeff986bdeb",
+              "span_id": "9e293e10a6264769",
+              "op": "gen_ai.invoke_agent",
+              "data": {
+                "gen_ai.operation.name": "invoke_agent",
+                "gen_ai.agent.name": "THRASH semantic restoration",
+                "fallback_used": false,
+                "failed": false,
+                "snapshot_age_hours": 0.0023809827698601615,
+                "duration_ms": 1.695
+              }
+            }
+          },
+          "spans": [
+            {
+              "description": "thrash.process_image.load",
+              "op": "thrash.process_image.load",
+              "trace_id": "4f2e293cdd3c47a4b284fdeff986bdeb",
+              "span_id": "93b266887626420e",
+              "parent_span_id": "9e293e10a6264769",
+              "data": {
+                "duration_ms": 0.118
+              },
+              "start_timestamp": 1791160477.615101,
+              "timestamp": 1791160477.61522
+            },
+            {
+              "description": "thrash.drift.detect",
+              "op": "thrash.drift.detect",
+              "trace_id": "4f2e293cdd3c47a4b284fdeff986bdeb",
+              "span_id": "2285b03e1faf45bf",
+              "parent_span_id": "9e293e10a6264769",
+              "data": {
+                "duration_ms": 1.028
+              },
+              "start_timestamp": 1791160477.6155374,
+              "timestamp": 1791160477.6165657
+            },
+            {
+              "description": "thrash.restore.render",
+              "op": "thrash.restore.render",
+              "trace_id": "4f2e293cdd3c47a4b284fdeff986bdeb",
+              "span_id": "639fba4873ac45fc",
+              "parent_span_id": "9e293e10a6264769",
+              "data": {
+                "duration_ms": 0.049
+              },
+              "start_timestamp": 1791160477.6166186,
+              "timestamp": 1791160477.616669
+            }
+          ],
+          "start_timestamp": 1791160477.6149905,
+          "timestamp": 1791160477.616686,
+          "event_id": "548ffe68b0e046d4a4c6ea53c0f86a00"
+        }
+      ]
+    }
+  ]
+}

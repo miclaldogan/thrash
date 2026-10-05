@@ -82,3 +82,34 @@ def test_generation_requests_resume_fields_without_breaking_old_images(monkeypat
     image = extract.ollama_extractor(Config())('game-alpha', ctx, legacy, 2)
     assert image.meta.context_version == 2
     assert image.completed == []  # missing evidence is never invented
+
+
+@pytest.mark.parametrize('choice,reason', [
+    ('Reject the remote dependency', 'The device must work disconnected'),
+    ('Defer the adapter rewrite', 'The existing adapter is still under review'),
+    ('Keep the small enclosure', ''),
+])
+def test_recorded_intent_survives_model_boundary(monkeypatch,tmp_path,choice,reason):
+    """Check the actual extraction boundary, not a simulated semantic score."""
+    import json
+    root=make_repo(tmp_path/'intent', {'notes.md':f'DECISION: {choice}\nWHY: {reason}\nNEXT: Inspect the prototype\n'})
+    context=gather_context(root,Config(),IgnoreRules.load(root),1e9)
+    def reply(cfg,system,messages,schema=None):
+        user=messages[0]['content']
+        assert choice in user and reason in user
+        assert 'OUTPUT SCHEMA' in user and 'Supporting file path' in user
+        assert 'intentional deferral' in system and 'Do not invent decisions' in system
+        return Reply(json.dumps({'program_counter':{'task':'Inspect prototype'},
+            'decisions':[{'text':choice,'reason':reason,'source':'notes.md','explicit':True}]}),.1)
+    monkeypatch.setattr(extract,'chat_json',reply)
+    image=extract.ollama_extractor(Config())('intent',context,None,1e9)
+    assert image.decisions[0].text==choice and image.decisions[0].reason==reason
+    assert image.decisions[0].explicit
+
+
+def test_empty_evidence_is_not_populated_by_schema(monkeypatch,ctx):
+    import json
+    _patch(monkeypatch,[json.dumps({'program_counter':{'task':'Inspect evidence'},'decisions':[],
+                                  'completed':[],'last_useful_state':''})])
+    image=extract.ollama_extractor(Config())('no-evidence',ctx,None,1e9)
+    assert not image.decisions and not image.completed and not image.last_useful_state

@@ -31,10 +31,10 @@ class ProgramCounter(BaseModel):
 
 
 class Decision(BaseModel):
-    text: str
-    source: str = ""
-    explicit: bool = True  # False = inferred by the model, not stated in the repo
-    reason: str = ""  # empty means the evidence did not record why
+    text: str = Field(description="A recorded choice, constraint, rejection, approval or intentional deferral; not a task, proposal or open question.")
+    source: str = Field(default="", description="Supporting file path from FILE LIST.")
+    explicit: bool = Field(default=True, description="True when the choice is recorded in the evidence, including faithful paraphrases.")
+    reason: str = Field(default="", description="Why this choice was made, only if recorded; otherwise an empty string.")
 
     @model_validator(mode="after")
     def require_source(self) -> "Decision":
@@ -44,9 +44,9 @@ class Decision(BaseModel):
 
 
 class CompletedWork(BaseModel):
-    text: str
-    source: str = ""
-    explicit: bool = False
+    text: str = Field(description="Work explicitly recorded as finished, verified or working; never a plan.")
+    source: str = Field(default="", description="Supporting file path from FILE LIST.")
+    explicit: bool = Field(default=False, description="True for a recorded completion, even when paraphrased.")
 
     @model_validator(mode="after")
     def require_source(self) -> "CompletedWork":
@@ -70,17 +70,17 @@ class ModelOutput(BaseModel):
     registers: dict[str, str] = Field(default_factory=dict)
     stack: list[str] = Field(default_factory=list)
     open_handles: list[str] = Field(default_factory=list)
-    decisions: list[Decision] = Field(default_factory=list)
+    decisions: list[Decision] = Field(default_factory=list, description="All explicitly recorded decisions. Empty only when no decision is supported.")
     unresolved: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
     next_action: str = ""
-    last_useful_state: str = ""
+    last_useful_state: str = Field(default="", description="Finished working state supported by evidence. Empty if nothing finished; never the pending task.")
     evidence: list[str] = Field(default_factory=list)
     summary: str = ""
-    completed: list[CompletedWork] = Field(default_factory=list)
+    completed: list[CompletedWork] = Field(default_factory=list, description="Recorded finished work, not proposed or ongoing work.")
     purpose: str = ""
     failures: list[str] = Field(default_factory=list)
-    resurrection_hint: str = ""
+    resurrection_hint: str = Field(default="", description="A recorded condition for returning after termination; empty if absent. Do not invent one from ordinary pending tasks.")
 
     @field_validator("completed", mode="before")
     @classmethod

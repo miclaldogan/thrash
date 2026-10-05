@@ -1,27 +1,39 @@
 {
-  "method": "Manual comparison against the eight synthetic ground truths; not an independent human benchmark.",
-  "outputs_sha256": "2d98b2f45a8f25f018bf37beddd68e7c77f647a1533d13b3b9dc58b982c909d2",
+  "method": "Manual comparison against unchanged synthetic ground truth; not independent human annotation.",
+  "selected_revision": "Prompt 5 second revision; third extractive-summary experiment rejected for completion omissions and question-as-decision false positive.",
+  "outputs_sha256": "6c73b76c59baaf323d2af3171f41a2a125e14cebf9b0e9b9756182c33792aa17",
+  "decision_summary": "all seven recorded choices and all six recorded reasons, with no extra decision in the no-decision case and no question-as-decision false positive. Six of seven choices have a valid notes.md source and explicit=true; circuit-garden has an empty source and is labeled inferred. Coverage is not the same as fully grounded extraction.",
+  "assertion_summary": "The calibration-completed assertion is gone, but game-alpha still describes an unpassed test as a failure and additionally invents initial successful tests. The unsupported-assertion count remains two, not zero. A third extractive-summary trial reduced invented prose but omitted four recorded completions, reintroduced a question-as-decision false positive and produced a malformed resurrection hint. That trial was rejected; its full outputs remain available. The more useful second revision is the release candidate, with these limitations disclosed.",
   "unsupported_claims": [
     {
       "scenario": "game-alpha",
       "field": "summary",
-      "claim": "turn test failure",
-      "evidence": "The rig has not passed a test; that does not establish a test was run and failed."
+      "claim": "after it passed initial tests",
+      "evidence": "No initial successful tests are recorded."
     },
     {
-      "scenario": "circuit-garden",
+      "scenario": "game-alpha",
       "field": "summary",
-      "claim": "Calibrated soil sensor",
-      "evidence": "Only wiring is verified. Calibration remains the current task."
+      "claim": "turn test failure",
+      "evidence": "The rig has not passed the test; the evidence does not establish a performed failed test."
     }
   ],
   "other_semantic_errors": [
     {
-      "scenario": "ink-orbit",
+      "scenario": "circuit-garden",
+      "field": "decisions.source",
+      "evidence": "Recorded choice and reason are preserved, but no supporting source survived; the choice is labeled inferred. Pre-sanitization output was not retained, so the cause of source loss is not established."
+    },
+    {
+      "scenario": "film-study",
       "field": "last_useful_state",
-      "claim": "Test export margins",
-      "evidence": "A pending task is placed in a field intended for finished, working state."
+      "evidence": "Empty despite the rough-cut completion being correctly preserved in completed."
+    },
+    {
+      "scenario": "paper-crane",
+      "field": "program_counter",
+      "evidence": "A faithful audit-uncited-claims paraphrase fails the frozen citation keyword; the raw 7/8 score is retained."
     }
   ],
-  "limitations": "Keyword checks measure literal field coverage. This review flags unsupported factual assertions, not every possible ambiguity or omission. It is not a proof of zero other hallucinations."
+  "limitations": "These development cases informed generic prompt revisions. This is a regression comparison, not a held-out benchmark. Matching words do not prove correctness; manual review is neither exhaustive nor independent."
 }

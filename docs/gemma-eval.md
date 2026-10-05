@@ -1,58 +1,80 @@
-# Gemma process-image evaluation
+# Gemma process-image evaluation: release gate
 
-Eight hand-authored synthetic repositories, one notes file each; actual local **gemma3:4b**, no fine-tuning and no cloud judge. Run date: 2026-10-05. This is a small field-coverage check, not a general model benchmark.
+Eight unchanged, hand-authored synthetic repositories; actual local **gemma3:4b**, no fine-tuning and no cloud judge. Run date: 2026-10-05. Ground truth, scenario selection and keyword scoring were **not changed** from Prompt 4. These development cases informed prompt revisions, so this is a regression check, **not a held-out generalization benchmark**.
 
-The second run took **123.404 seconds**. Median inference (HTTP span) was **6.386 s**; median complete fresh restoration was **6.462 s**. Median restoration from the resulting saved image was **1.982 ms**, without another model call.
+| Frozen check | Before | After |
+|---|---:|---:|
+| Schema validity | 8/8 | 8/8 |
+| Current-task term coverage | 8/8 | 7/8 |
+| Next-action term coverage | 7/8 | 8/8 |
+| Completed-work coverage | 6/8 | 8/8 |
+| Decision coverage (includes one absence case) | 1/8 | 8/8 |
+| Reason coverage (includes two absence cases) | 2/8 | 8/8 |
+| Unresolved-work coverage | 8/8 | 8/8 |
 
-| Metric | Result | Interpretation |
-|---|---:|---|
-| Schema validity | 8/8 | Pydantic accepted all outputs; does not prove semantic correctness |
-| Current-task coverage | 8/8 | Predetermined task terms present in program counter |
-| Next-action coverage | 7/8 | One output dropped the requested rebuild step |
-| Completed-work coverage | 6/8 | Five of seven recorded completions; the no-completion case correctly empty |
-| Decision-field accuracy | 1/8 | Only the no-decision case passed; **0/7 recorded decisions extracted** |
-| Decision-reason accuracy | 2/8 | Two absent reasons correctly blank; **0/6 recorded reasons extracted** |
-| Unresolved-work coverage | 8/8 | Predetermined question terms present |
-| Unsupported factual claims flagged | 2 | Manual comparison of saved outputs against ground truth |
-| Additional misplaced-state field | 1 | Pending work represented as last useful state |
+Final-run manual review: **2 unsupported factual assertions flagged** (before: two). Additional semantic issues are recorded separately below. This review is not an independent human annotation or proof of zero other hallucinations.
 
-## Per-scenario results
+Selected release-run runtime: **157.232 s**; median model HTTP span: **9.739 s**; median complete fresh restore: **9.822 s**. Median saved-image restore: **2.384 ms**, without another model call.
 
-✓ means the predeclared keyword/empty-field check passed. Absence cases are included in the denominators above, not counted as successful positive extraction.
+## Decision-extraction finding
+
+All seven recorded decisions and all six recorded reasons were present after retrieval, ignore rules, redaction and final prompt assembly. None had been removed by privacy filtering. The old extraction produced empty decision arrays despite valid JSON. That isolated the failure to semantic generation, not missing evidence; it did not prove a single causal prompt defect.
+
+The generic fix defines decisions as recorded choices, constraints, rejections, approvals or intentional deferrals; separates them from tasks, proposals and open questions; distinguishes explicit evidence from inferred preferences; and preserves a reason only when one is recorded. Pydantic field descriptions and the same output schema are now supplied in the prompt as well as Ollama's `format` argument, following [Ollama's guidance](https://docs.ollama.com/capabilities/structured-outputs). Saved-image compatibility, validation, one repair attempt and allowed-path filtering are unchanged. No scenario-specific answers or examples were added to the prompt.
+
+The final review found all seven recorded choices and all six recorded reasons, with no extra decision in the no-decision case and no question-as-decision false positive. Six of seven choices have a valid notes.md source and explicit=true; circuit-garden has an empty source and is labeled inferred. Coverage is not the same as fully grounded extraction.
+
+## Unsupported-assertion finding
+
+Before, the summary described an unpassed test as a failed test and a pending calibration as completed. A later intermediate run additionally invented initial successful tests. An extractive-summary experiment requested verbatim evidence clauses; it was rejected because it harmed useful completed-work extraction and reintroduced a false decision. The selected release revision keeps the general tense/uncertainty guidance, without that extractive-summary constraint.
+
+The calibration-completed assertion is gone, but game-alpha still describes an unpassed test as a failure and additionally invents initial successful tests. The unsupported-assertion count remains two, not zero. A third extractive-summary trial reduced invented prose but omitted four recorded completions, reintroduced a question-as-decision false positive and produced a malformed resurrection hint. That trial was rejected; its full outputs remain available. The more useful second revision is the release candidate, with these limitations disclosed.
+
+Other semantic findings:
+- **circuit-garden / decisions.source:** Recorded choice and reason are preserved, but no supporting source survived; the choice is labeled inferred. Pre-sanitization output was not retained, so the cause of source loss is not established.
+- **film-study / last_useful_state:** Empty despite the rough-cut completion being correctly preserved in completed.
+- **paper-crane / program_counter:** A faithful audit-uncited-claims paraphrase fails the frozen citation keyword; the raw 7/8 score is retained.
+- **Unsupported: game-alpha / summary:** after it passed initial tests — No initial successful tests are recorded.
+- **Unsupported: game-alpha / summary:** turn test failure — The rig has not passed the test; the evidence does not establish a performed failed test.
+
+## Per-scenario frozen checks
+
+✓ means the predeclared keyword/empty-field check passed. Matching terms do not prove truth; paraphrases can fail these checks. Absence cases remain in the denominators and are not treated as positive extraction.
 
 | Scenario | Task | Completed | Decision | Reason | Open | Next | Restore s |
 |---|---|---|---|---|---|---|---:|
-| game-alpha | ✓ | — | — | — | ✓ | ✓ | 80.397 |
-| paper-crane | ✓ | ✓ | — | — | ✓ | ✓ | 6.425 |
-| vision-lab | ✓ | ✓ | — | — | ✓ | ✓ | 6.507 |
-| circuit-garden | ✓ | ✓ | — | — | ✓ | ✓ | 6.499 |
-| film-study | ✓ | — | — | ✓ | ✓ | ✓ | 5.407 |
-| signal-box | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 6.228 |
-| ink-orbit | ✓ | ✓ | — | — | ✓ | ✓ | 5.382 |
-| stone-bridge | ✓ | ✓ | — | — | ✓ | — | 6.536 |
+| game-alpha | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 90.851 |
+| paper-crane | — | ✓ | ✓ | ✓ | ✓ | ✓ | 9.899 |
+| vision-lab | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 10.157 |
+| circuit-garden | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 9.827 |
+| film-study | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 9.176 |
+| signal-box | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 8.272 |
+| ink-orbit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 9.202 |
+| stone-bridge | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 9.816 |
 
-## What failed
+## All runs remain available
 
-The model omitted every recorded decision even though every JSON property was schema-required. Empty arrays satisfy that schema. Two recorded completions were omitted from `completed` but survived in `last_useful_state`; four of the five returned completions were marked inferred despite explicit notes. The summary asserted a failed jaw test when the notes only said it had not passed, and described calibration as completed when only wiring had been verified. A pending margin test also appeared as `last_useful_state`.
+- [Initial Prompt 4 baseline](eval/baseline.json): 124.029 s, the initial 0/7 positive decision result.
+- [Prompt 4 measured before-run](eval/prompt4-results.json) and [its review](eval/prompt4-review.json): repeated baseline with detailed timings.
+- [First Prompt 5 attempt](eval/prompt5-initial.json): decisions recovered, but an open question was also emitted as a decision. Completed/task/next coverage remained imperfect.
+- [Second Prompt 5 attempt](eval/prompt5-grounding.json): removed that question-as-decision false positive, but summaries still invented test outcomes and one decision lost its source.
+- [Rejected extractive-summary trial](eval/prompt5-extractive-rejected.json): completed coverage fell to 4/8, a question again became a decision, and a resurrection hint contained stray JSON-like text.
+- [Selected release run](eval/results.json) and [output-hash-bound review](eval/review.json): the second revision is retained for its better overall restoration quality. `results.json` is an exact copy of `prompt5-grounding.json`; the code was restored to that revision. All scenarios and rejected trial outputs remain available.
 
-The next-action miss kept “delete one test page” but omitted “rebuild the local index.” That is partial coverage, not an unrelated instruction. Confidence values of 0.8–0.95 did not reliably expose the omissions.
-
-These are material limitations of the current extractor. The UI can present a complete canonical report, but the real model does not always supply all its fields. **Do not use the fixture hero GIF as proof of decision extraction quality.** No prompt or semantic architecture was changed to make this score look better.
+The original [scenario file](../scripts/eval/scenarios.json) and `score()` in [the runner](../scripts/eval/run.py) are unchanged. Current-task coverage can fall for a faithful paraphrase: “Audit the three uncited claims” lacks the frozen term “citation.” The raw score is retained rather than relaxing the grader.
 
 ## Reproduce
 
 ```sh
 pip install -e ".[dev,sentry]"
-# Local Ollama already has gemma3:4b installed:
+# Requires already-installed local gemma3:4b weights and Ollama:
 python scripts/eval/run.py --output docs/eval/results.json
-# Linux, bubblewrap: a separate network namespace containing only loopback:
+# Linux bubblewrap, only loopback available and read-only weights:
 python scripts/eval/isolated.py --output docs/eval/results.json
-# Repeat the manual output review, update review.json, then:
+# Repeat the manual semantic review, update review.json, then:
 python scripts/eval/report.py
 ```
 
-The evaluation runner defaults to a mocked Sentry transport even if the caller has a DSN. `--upload` is a separate explicit choice and also requires `THRASH_SENTRY=1` and `SENTRY_DSN`; only sanitized envelopes are uploaded, never evaluation notes or outputs. The isolated runner cannot upload.
+The runner uses a mocked Sentry transport by default even if a DSN exists. `--upload` additionally requires `THRASH_SENTRY=1` and `SENTRY_DSN` and sends only sanitized envelopes, never source notes or model outputs. The isolated runner cannot upload. Hosted Sentry verification was not performed.
 
-Ground truth and exact keyword alternatives: [scenarios.json](../scripts/eval/scenarios.json). Full synthetic model outputs and actual SDK envelopes: [results.json](eval/results.json). The initial run is preserved as [baseline.json](eval/baseline.json): 124.029 s total, the same field scores. [review.json](eval/review.json) records two unsupported assertions and one misplaced-state field, bound to a hash of the reviewed outputs.
-
-Both runs used read-only installed weights and temporary repositories in a loopback-only namespace. First-call timings include model initialization and prompt evaluation. The seven subsequent calls reuse that server. These are single observations per scenario, not statistically robust latency estimates. Scoring checks chosen terms or required emptiness; paraphrases can cause false negatives, and matching words do not establish factual truth. Manual review is not exhaustive or independent human annotation.
+All real runs use temporary repositories and a fresh isolated server. First-call timing includes model loading and prompt evaluation; later calls reuse that server. Single observations on eight small cases do not establish production accuracy, generalization or robust latency estimates. Confidence is model-reported and uncalibrated. Hero GIFs use fixture images; they do not prove model quality.

@@ -1,0 +1,27 @@
+{
+  "method": "Manual comparison against the eight synthetic ground truths; not an independent human benchmark.",
+  "outputs_sha256": "2d98b2f45a8f25f018bf37beddd68e7c77f647a1533d13b3b9dc58b982c909d2",
+  "unsupported_claims": [
+    {
+      "scenario": "game-alpha",
+      "field": "summary",
+      "claim": "turn test failure",
+      "evidence": "The rig has not passed a test; that does not establish a test was run and failed."
+    },
+    {
+      "scenario": "circuit-garden",
+      "field": "summary",
+      "claim": "Calibrated soil sensor",
+      "evidence": "Only wiring is verified. Calibration remains the current task."
+    }
+  ],
+  "other_semantic_errors": [
+    {
+      "scenario": "ink-orbit",
+      "field": "last_useful_state",
+      "claim": "Test export margins",
+      "evidence": "A pending task is placed in a field intended for finished, working state."
+    }
+  ],
+  "limitations": "Keyword checks measure literal field coverage. This review flags unsupported factual assertions, not every possible ambiguity or omission. It is not a proof of zero other hallucinations."
+}
